@@ -64,9 +64,9 @@
 
     <!-- STEP 4: success -->
     <div id="stepDone" class="attend-flow" style="display:none;">
-      <div class="msg ok show">Nadawat na ang imong attendance!</div>
+      <div class="msg ok show">Nadawat na ang imong attendance! Mobalik na sa dashboard...</div>
       <div id="qrHolder" style="display:flex; justify-content:center; margin:16px 0;"></div>
-      <a href="qr.html" class="btn gold">Tan-awa ang QR Code</a>
+      
     </div>
 
   </div>
@@ -271,6 +271,11 @@ submitBtn.addEventListener("click", async () => {
     qrHolder.appendChild(displayQR);
 
     showStep(stepDone);
+
+    // Balik dayon sa student dashboard human sa pipila ka segundo
+    setTimeout(() => {
+      window.location.href = "student_dashboard.html";
+    }, 2500);
   }catch(err){
     console.error(err);
     alert("Naay problema sa pag-submit. Sulayi pag-usab.");
