@@ -22,8 +22,8 @@
 <div class="wrap">
   <div class="card">
     <p class="eyebrow">Student Dashboard</p>
-    <h1 class="page-title" id="greeting">Maayong adlaw!</h1>
-    <p class="page-sub">I-click ang button sa ubos aron mag-take og attendance karong adlawa.</p>
+    <h1 class="page-title" id="greeting">Good Day!</h1>
+    <p class="page-sub">Just click the button below to take attendance for today.</p>
 
     <!-- STEP 0: start -->
     <div id="stepStart" class="attend-flow">
@@ -34,7 +34,7 @@
     <div id="stepLocation" class="attend-flow" style="display:none;">
       <div class="status-line">
         <span class="status-dot" id="locDot"></span>
-        <span id="locText">Ginakuha ang imong location...</span>
+        <span id="locText">Getting location...</span>
       </div>
       <div id="locError" class="msg error"></div>
     </div>
@@ -48,7 +48,7 @@
       <video id="video" autoplay playsinline></video>
       <canvas id="canvas" style="display:none;"></canvas>
       <br>
-      <button class="btn gold" id="captureBtn">Kuha og Picture</button>
+      <button class="btn gold" id="captureBtn">Capture Picture</button>
       <button class="btn outline" id="cancelBtn">Cancel</button>
     </div>
 
@@ -63,7 +63,7 @@
 
     <!-- STEP 4: success -->
     <div id="stepDone" class="attend-flow" style="display:none;">
-      <div class="msg ok show">Nadawat na ang imong attendance! Mobalik na sa dashboard...</div>
+      <div class="msg ok show">Attendance submitted successfully! Returning to dashboard...</div>
       <div id="qrHolder" style="display:flex; justify-content:center; margin:16px 0;"></div>
       
     </div>
@@ -84,7 +84,7 @@ if(role !== "student" || !displayName){
   window.location.href = "login.html";
 }
 document.getElementById("whoLabel").textContent = displayName || "";
-document.getElementById("greeting").textContent = `Kumusta, ${displayName}!`;
+document.getElementById("greeting").textContent = `Good day, ${displayName}!`;
 
 document.getElementById("logoutBtn").addEventListener("click", () => {
   sessionStorage.clear();
@@ -136,13 +136,13 @@ async function reverseGeocode(lat, lng){
 startBtn.addEventListener("click", () => {
   showStep(stepLocation);
   locDot.className = "status-dot";
-  locText.textContent = "Ginakuha ang imong location...";
+  locText.textContent = "Getting location...";
   locError.className = "msg error";
 
   if(!navigator.geolocation){
     locDot.className = "status-dot off";
-    locText.textContent = "Wala nay location support ang imong browser.";
-    locError.textContent = "Dili ka makakuha og attendance kung wala ma-enable ang location.";
+    locText.textContent = "No location support.";
+    locError.textContent = "You cannot take attendance without enabling location services.";
     locError.classList.add("show");
     return;
   }
@@ -150,7 +150,7 @@ startBtn.addEventListener("click", () => {
   navigator.geolocation.getCurrentPosition(async (pos) => {
     const lat = pos.coords.latitude;
     const lng = pos.coords.longitude;
-    locText.textContent = "Nakuha ang location. Ginakuha ang address...";
+    locText.textContent = "Location obtained. Fetching address...";
     const address = await reverseGeocode(lat, lng);
 
     locationData = { lat, lng, address };
@@ -161,8 +161,8 @@ startBtn.addEventListener("click", () => {
     await startCamera();
   }, (err) => {
     locDot.className = "status-dot off";
-    locText.textContent = "Wala ma-enable ang location.";
-    locError.textContent = "Kinahanglan e-allow ang location aron makakuha og attendance. Palihug tugoti ang location access dayon sulayi pag-usab.";
+    locText.textContent = "Location not enabled.";
+    locError.textContent = "Location services are required to take attendance. Please enable location access and try again.";
     locError.classList.add("show");
   }, { enableHighAccuracy: true, timeout: 15000 });
 });
