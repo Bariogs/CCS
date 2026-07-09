@@ -4,7 +4,9 @@ import { db } from "./firebase.js";
 import {
   collection,
   addDoc,
-  serverTimestamp
+  serverTimestamp,
+  doc,
+  onSnapshot
 } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-firestore.js";
 
 // --- Guard: must have logged in as a student first ---
@@ -34,9 +36,97 @@ const submitStatus = document.getElementById("submitStatus");
 const qrSection = document.getElementById("qrSection");
 const qrCanvas = document.getElementById("qrCanvas");
 
+const cameraSection = document.getElementById("cameraSection");
+const locationSection = document.getElementById("locationSection");
+const submitSection = document.getElementById("submitSection");
+
+const countdownPopup = document.getElementById("countdownPopup");
+const countdownTimer = document.getElementById("countdownTimer");
+const closedMessage = document.getElementById("closedMessage");
+
 let selfieDataUrl = null;
 let coords = null; // { latitude, longitude }
 let address = null;
+
+let cameraStarted = false;
+let startDate = null;
+let endDate = null;
+let tickIntervalId = null;
+let windowIsOpen = false;
+
+// --- Schedule check (moved from index.js) ---
+const scheduleDocRef = doc(db, "settings", "attendanceWindow");
+
+onSnapshot(scheduleDocRef, (snap) => {
+  if (!snap.exists()) {
+    startDate = null;
+    endDate = null;
+  } else {
+    const data = snap.data();
+    startDate = data.start?.toDate ? data.start.toDate() : null;
+    endDate = data.end?.toDate ? data.end.toDate() : null;
+  }
+
+  if (tickIntervalId) clearInterval(tickIntervalId);
+  tick();
+  tickIntervalId = setInterval(tick, 1000);
+});
+
+function tick() {
+  if (!startDate || !endDate) {
+    // No schedule set yet — keep form hidden
+    setFormVisible(false);
+    countdownPopup.style.display = "none";
+    closedMessage.style.display = "none";
+    return;
+  }
+
+  const now = new Date();
+
+  if (now < startDate) {
+    // Before the window: show countdown, hide the form
+    setFormVisible(false);
+    countdownPopup.style.display = "block";
+    closedMessage.style.display = "none";
+    countdownTimer.textContent = formatCountdown(startDate - now);
+  } else if (now >= startDate && now < endDate) {
+    // Inside the window: show the form
+    countdownPopup.style.display = "none";
+    closedMessage.style.display = "none";
+    setFormVisible(true);
+  } else {
+    // After the window: hide the form
+    setFormVisible(false);
+    countdownPopup.style.display = "none";
+    closedMessage.style.display = "block";
+  }
+}
+
+function setFormVisible(isOpen) {
+  windowIsOpen = isOpen;
+  cameraSection.style.display = isOpen ? "block" : "none";
+  locationSection.style.display = isOpen ? "block" : "none";
+  submitSection.style.display = isOpen ? "block" : "none";
+
+  // Only request camera permission once the window actually opens
+  if (isOpen && !cameraStarted) {
+    cameraStarted = true;
+    startCamera();
+  }
+}
+
+function formatCountdown(ms) {
+  const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  const parts = [];
+  if (days > 0) parts.push(`${days}d`);
+  parts.push(`${hours}h`, `${minutes}m`, `${seconds}s`);
+  return parts.join(" ");
+}
 
 // --- Camera setup ---
 async function startCamera() {
@@ -51,7 +141,6 @@ async function startCamera() {
       "Could not access camera. Please allow camera permission and reload.";
   }
 }
-startCamera();
 
 captureBtn.addEventListener("click", () => {
   canvas.width = video.videoWidth;
@@ -132,6 +221,12 @@ function checkReadyToSubmit() {
 
 // --- Submit attendance ---
 submitBtn.addEventListener("click", async () => {
+  // Extra safety check in case the window closed while the form was open
+  if (!windowIsOpen) {
+    submitStatus.textContent = "Attendance window is closed.";
+    return;
+  }
+
   submitBtn.disabled = true;
   submitStatus.textContent = "Submitting...";
 
@@ -150,9 +245,9 @@ submitBtn.addEventListener("click", async () => {
     submitStatus.textContent = "Attendance submitted successfully!";
     await showQrCode();
 
-    document.getElementById("cameraSection").style.display = "none";
-    document.getElementById("locationSection").style.display = "none";
-    document.getElementById("submitSection").style.display = "none";
+    cameraSection.style.display = "none";
+    locationSection.style.display = "none";
+    submitSection.style.display = "none";
     qrSection.style.display = "block";
   } catch (err) {
     submitStatus.textContent = "Something went wrong. Please try again.";
