@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Mga Record — CCS Attendance</title>
+<title>Shared Records — CCS Attendance</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
@@ -16,7 +16,7 @@
   <nav>
     <span class="who" id="whoLabel"></span>
     <a href="#" id="dashLink">Dashboard</a>
-    <a href="qr.html">Mga QR Code</a>
+    <a href="qr.html">QR Code</a>
     <button id="logoutBtn">Log out</button>
   </nav>
 </div>
@@ -24,10 +24,10 @@
 <div class="wrap">
   <div class="card">
     <p class="eyebrow">Shared Records</p>
-    <h1 class="page-title">Mga Na-share nga Attendance</h1>
-    <p class="page-sub">Kini nga listahan gikan sa mga QR code nga gi-share sa <b>qr.html</b>.</p>
+    <h1 class="page-title">Shared Records</h1>
+    <p class="page-sub">This list contains records shared from the <b>qr.html</b> page.</p>
 
-    <button class="btn gold" id="downloadBtn" style="display:none;">⬇ I-download as Excel</button>
+    <button class="btn gold" id="downloadBtn" style="display:none;">⬇ Download as Excel</button>
 
     <table class="records" id="recordsTable" style="display:none;">
       <thead>
@@ -35,7 +35,7 @@
       </thead>
       <tbody id="recordsBody"></tbody>
     </table>
-    <div id="emptyState" class="empty" style="display:none;">Wala pay na-share nga record.</div>
+    <div id="emptyState" class="empty" style="display:none;">No shared records available.</div>
   </div>
 </div>
 
@@ -99,7 +99,7 @@ async function loadRecords(){
 
 document.getElementById("downloadBtn").addEventListener("click", () => {
   if(rows.length === 0){
-    alert("Wala pay data nga i-download.");
+    alert("No data to download.");
     return;
   }
   const ws = XLSX.utils.json_to_sheet(rows);

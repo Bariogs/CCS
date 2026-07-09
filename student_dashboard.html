@@ -176,8 +176,8 @@ async function startCamera(){
     showStep(stepCamera);
   }catch(err){
     locDot.className = "status-dot off";
-    locText.textContent = "Wala ma-access ang camera.";
-    locError.textContent = "Kinahanglan e-allow ang camera access aron makakuha og picture.";
+    locText.textContent = "Camera not accessible.";
+    locError.textContent = "Camera access is required to take attendance. Please allow camera access and try again.";
     locError.classList.add("show");
   }
 }

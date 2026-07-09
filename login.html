@@ -14,13 +14,13 @@
   <div class="card" style="max-width:400px; width:100%;">
     <p class="eyebrow">CCS Attendance System</p>
     <h1 class="page-title">Log in</h1>
-    <p class="page-sub">Gamita ang imong ngalan ug School ID isip password.</p>
+    <p class="page-sub">Use your name and School ID as your password.</p>
 
     <div id="msg" class="msg error"></div>
 
     <form id="loginForm">
       <div class="field">
-        <label for="username">Ngalan (Username)</label>
+        <label for="username">Name (Username)</label>
         <input type="text" id="username" autocomplete="username" required placeholder="e.g. Juan Dela Cruz">
       </div>
       <div class="field">
@@ -62,7 +62,7 @@ form.addEventListener("submit", async (e) => {
   const password = document.getElementById("password").value.trim();
 
   if(!username || !password){
-    showError("Palihug sulati ang ngalan ug password.");
+    showError("Please fill in both fields.");
     return;
   }
 
@@ -93,11 +93,11 @@ form.addEventListener("submit", async (e) => {
       sessionStorage.setItem("displayName", studentDoc.name);
       window.location.href = "student_dashboard.html";
     } else {
-      showError("Sayop ang ngalan o School ID. Palihug sulayi pag-usab.");
+      showError("Invalid name or School ID. Please try again.");
     }
   }catch(err){
     console.error(err);
-    showError("Naay problema sa pag-login. Sulayi pag-usab.");
+    showError("There was an issue with the login process. Please try again.");
   }finally{
     loginBtn.disabled = false;
     loginBtnText.textContent = "Login";
