@@ -9,7 +9,7 @@
 export const STUDENTS = [
   {
     name: "John Mark A. Barioga",
-    email: "john.mark.barioga@student.csfj",
+    email: "johnmarkbarioga@student.csfj",
     schoolId: "COL-00722"
   },
   {
