@@ -1,0 +1,158 @@
+/* ===== CCS Attendance System — shared styles ===== */
+:root{
+  --navy: #142240;
+  --navy-deep: #0c1730;
+  --gold: #d4a24c;
+  --gold-soft: #f0d9ab;
+  --paper: #f6f4ef;
+  --ink: #1f2430;
+  --ink-soft: #5a6072;
+  --line: #dfdbd0;
+  --ok: #2e7d4f;
+  --err: #b3402b;
+  --radius: 14px;
+  --shadow: 0 10px 30px rgba(12, 23, 48, 0.12);
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+*{ box-sizing:border-box; }
+
+body{
+  margin:0;
+  min-height:100vh;
+  background:
+    radial-gradient(1100px 600px at 85% -10%, rgba(212,162,76,.14), transparent 60%),
+    var(--paper);
+  color:var(--ink);
+  font-family:'Inter', system-ui, sans-serif;
+}
+
+h1,h2,h3,.brand{ font-family:'Poppins', system-ui, sans-serif; }
+
+.topbar{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:18px 28px;
+  background:var(--navy);
+  color:#fff;
+  box-shadow:var(--shadow);
+}
+.topbar .brand{
+  display:flex; align-items:center; gap:10px;
+  font-weight:600; letter-spacing:.3px; font-size:1.05rem;
+}
+.topbar .brand .dot{
+  width:10px; height:10px; border-radius:50%;
+  background:var(--gold);
+  box-shadow:0 0 0 4px rgba(212,162,76,.25);
+}
+.topbar nav{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+.topbar nav a, .topbar nav button{
+  color:#f2ede1; text-decoration:none; font-size:.9rem;
+  padding:8px 14px; border-radius:999px; border:1px solid rgba(255,255,255,.18);
+  background:transparent; cursor:pointer; font-family:inherit;
+  transition:.15s ease;
+}
+.topbar nav a:hover, .topbar nav button:hover{
+  background:rgba(255,255,255,.12); border-color:rgba(255,255,255,.35);
+}
+.topbar .who{ font-size:.82rem; color:var(--gold-soft); margin-right:6px; }
+
+.wrap{ max-width:1080px; margin:0 auto; padding:36px 24px 80px; }
+
+.card{
+  background:#fff; border:1px solid var(--line); border-radius:var(--radius);
+  box-shadow:var(--shadow); padding:28px;
+}
+
+.eyebrow{
+  text-transform:uppercase; letter-spacing:.14em; font-size:.72rem;
+  color:var(--gold); font-weight:700; margin:0 0 6px;
+}
+
+.page-title{ font-size:1.7rem; margin:0 0 4px; color:var(--navy-deep); }
+.page-sub{ color:var(--ink-soft); margin:0 0 26px; font-size:.95rem; }
+
+.btn{
+  display:inline-flex; align-items:center; justify-content:center; gap:8px;
+  padding:12px 22px; border-radius:10px; border:none; cursor:pointer;
+  font-family:'Inter',sans-serif; font-weight:600; font-size:.92rem;
+  background:var(--navy); color:#fff; transition:.15s ease;
+}
+.btn:hover{ background:var(--navy-deep); transform:translateY(-1px); }
+.btn:disabled{ opacity:.5; cursor:not-allowed; transform:none; }
+.btn.gold{ background:var(--gold); color:var(--navy-deep); }
+.btn.gold:hover{ background:#c48f37; }
+.btn.outline{ background:transparent; color:var(--navy); border:1.5px solid var(--navy); }
+.btn.outline:hover{ background:var(--navy); color:#fff; }
+.btn.danger{ background:var(--err); color:#fff; }
+.btn.block{ width:100%; }
+
+.field{ margin-bottom:18px; }
+.field label{ display:block; font-size:.82rem; font-weight:600; color:var(--ink-soft); margin-bottom:6px; }
+.field input{
+  width:100%; padding:12px 14px; border-radius:9px; border:1.5px solid var(--line);
+  font-size:.95rem; font-family:inherit; background:#fcfbf8;
+}
+.field input:focus{ outline:none; border-color:var(--gold); background:#fff; }
+
+.msg{ padding:11px 14px; border-radius:9px; font-size:.86rem; margin-bottom:16px; display:none; }
+.msg.error{ background:#fbe6e0; color:var(--err); }
+.msg.ok{ background:#e2f2e8; color:var(--ok); }
+.msg.show{ display:block; }
+
+.center-screen{
+  min-height:100vh; display:flex; align-items:center; justify-content:center; padding:20px;
+}
+
+.status-line{ display:flex; align-items:center; gap:10px; font-size:.86rem; color:var(--ink-soft); margin-bottom:14px; }
+.status-dot{ width:9px; height:9px; border-radius:50%; background:var(--line); flex-shrink:0; }
+.status-dot.on{ background:var(--ok); }
+.status-dot.off{ background:var(--err); }
+
+video, canvas.preview{
+  width:100%; max-width:420px; border-radius:12px; background:#000; display:block; margin:0 auto;
+}
+
+.grid{
+  display:grid; grid-template-columns:repeat(auto-fill, minmax(160px,1fr)); gap:16px; margin-top:20px;
+}
+.qr-tile{
+  background:#fff; border:1px solid var(--line); border-radius:12px; padding:14px;
+  text-align:center; cursor:pointer; transition:.15s ease;
+}
+.qr-tile:hover{ box-shadow:var(--shadow); transform:translateY(-2px); border-color:var(--gold); }
+.qr-tile img{ width:100%; border-radius:8px; margin-bottom:8px; }
+.qr-tile .name{ font-weight:600; font-size:.85rem; color:var(--navy-deep); }
+.qr-tile .time{ font-size:.72rem; color:var(--ink-soft); margin-top:2px; }
+
+.modal-bg{
+  position:fixed; inset:0; background:rgba(12,23,48,.55); display:none;
+  align-items:center; justify-content:center; padding:20px; z-index:50;
+}
+.modal-bg.show{ display:flex; }
+.modal{
+  background:#fff; border-radius:var(--radius); max-width:420px; width:100%;
+  padding:26px; box-shadow:var(--shadow); position:relative;
+}
+.modal .close{
+  position:absolute; top:14px; right:16px; border:none; background:none;
+  font-size:1.2rem; cursor:pointer; color:var(--ink-soft);
+}
+.modal img.photo{ width:100%; border-radius:10px; margin:14px 0; border:1px solid var(--line); }
+.modal .row{ font-size:.88rem; margin-bottom:6px; color:var(--ink-soft); }
+.modal .row b{ color:var(--ink); }
+
+table.records{ width:100%; border-collapse:collapse; margin-top:18px; font-size:.88rem; }
+table.records th, table.records td{ text-align:left; padding:11px 12px; border-bottom:1px solid var(--line); }
+table.records th{ color:var(--ink-soft); font-weight:600; font-size:.78rem; text-transform:uppercase; letter-spacing:.06em; }
+
+.empty{ text-align:center; padding:40px 20px; color:var(--ink-soft); font-size:.9rem; }
+
+.spinner{
+  width:18px; height:18px; border:2.5px solid rgba(255,255,255,.4);
+  border-top-color:#fff; border-radius:50%; animation:spin .7s linear infinite;
+}
+@keyframes spin{ to{ transform:rotate(360deg); } }
+
+.attend-flow{ text-align:center; }
+.attend-flow .btn{ margin-top:10px; }

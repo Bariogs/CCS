@@ -1,44 +1,72 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CCS Department | Attendance System</title>
 </head>
 <body>
 
-  <header>
+<header>
     <h1>Colegio de San Francisco de Javier</h1>
     <h2>College of Computer Studies (CCS) Department</h2>
-  </header>
+</header>
 
-  <main>
-    <section>
-      <p>
+<main>
+
+    <p>
         Welcome to the official CCS Department Attendance System.
         Use your School ID to log in and record your attendance
         with a selfie and your current location.
-      </p>
+    </p>
 
-      <div id="countdownPopup" style="display:none;">
+    <div id="countdownPopup" style="display:none;">
         <p id="countdownLabel">Attendance opens in:</p>
         <p id="countdownTimer"></p>
-      </div>
+    </div>
 
-      <p id="closedMessage" style="display:none;">
+    <p id="closedMessage" style="display:none;">
         Attendance for this schedule has ended.
-      </p>
+    </p>
 
-      <a href="login.html">
-        <button type="button" id="loginBtn" style="display:none;">Log In</button>
-      </a>
-    </section>
-  </main>
+    <!-- Login Button -->
+    <button id="loginBtn" style="display:none;">
+        Log In
+    </button>
 
-  <footer>
-    <p>Colegio de San Francisco de Javier &mdash; Rizal, Zamboanga del Norte</p>
-  </footer>
+    <!-- Login Choice -->
+    <div id="loginChoice" style="display:none; margin-top:20px;">
 
-  <script type="module" src="index.js"></script>
+        <h3>Select Login Type</h3>
+
+        <button onclick="window.location.href='login.html'">
+            Student
+        </button>
+
+        <button onclick="window.location.href='admin_login.html'">
+            Admin
+        </button>
+
+    </div>
+
+</main>
+
+<footer>
+    <p>
+        Colegio de San Francisco de Javier — Rizal, Zamboanga del Norte
+    </p>
+</footer>
+
+<script type="module" src="index.js"></script>
+
+<script>
+const loginBtn = document.getElementById("loginBtn");
+const loginChoice = document.getElementById("loginChoice");
+
+loginBtn.addEventListener("click", () => {
+    loginChoice.style.display = "block";
+});
+</script>
+
 </body>
 </html>

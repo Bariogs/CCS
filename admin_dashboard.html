@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Dashboard — CCS Attendance</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand"><span class="dot"></span> CCS Attendance — Admin</div>
+  <nav>
+    <span class="who">Admin</span>
+    <a href="qr.html">Mga QR Code</a>
+    <a href="me.html">Mga Record</a>
+    <button id="logoutBtn">Log out</button>
+  </nav>
+</div>
+
+<div class="wrap">
+
+  <div class="card" style="margin-bottom:24px;">
+    <p class="eyebrow">Admin Dashboard</p>
+    <h1 class="page-title">Maayong adlaw, Admin!</h1>
+    <p class="page-sub">Dinhi nimo madumala ang mga estudyante ug makita ang tanang attendance record.</p>
+    <div style="display:flex; gap:12px; flex-wrap:wrap;">
+      <a class="btn gold" href="qr.html">Tan-awa ang mga QR Code</a>
+      <a class="btn outline" href="me.html">Tan-awa ang mga Record / I-download</a>
+    </div>
+  </div>
+
+  <div class="card">
+    <p class="eyebrow">Student Accounts</p>
+    <h2 style="margin:0 0 4px; color:var(--navy-deep);">Pagdugang og Estudyante</h2>
+    <p class="page-sub">Ang ngalan mao ang username, ug ang School ID mao ang password sa estudyante kung mag-login.</p>
+
+    <div id="addMsg" class="msg"></div>
+
+    <form id="addStudentForm" style="max-width:420px;">
+      <div class="field">
+        <label for="sName">Ngalan sa Estudyante</label>
+        <input type="text" id="sName" required placeholder="e.g. Juan Dela Cruz">
+      </div>
+      <div class="field">
+        <label for="sId">School ID</label>
+        <input type="text" id="sId" required placeholder="e.g. COL-00789">
+      </div>
+      <button type="submit" class="btn gold" id="addBtn">Dugangi</button>
+    </form>
+
+    <table class="records" id="studentsTable" style="display:none; margin-top:26px;">
+      <thead><tr><th>#</th><th>Ngalan</th><th>School ID</th></tr></thead>
+      <tbody id="studentsBody"></tbody>
+    </table>
+    <div id="emptyState" class="empty" style="display:none;">Wala pay na-rehistro nga estudyante.</div>
+  </div>
+
+</div>
+
+<script type="module">
+import { db } from "./firebase.js";
+import {
+  collection, addDoc, getDocs, query, orderBy
+} from "https://www.gstatic.com/firebasejs/11.9.1/firebase-firestore.js";
+
+// ---- Auth guard ----
+const role = sessionStorage.getItem("role");
+if(role !== "admin"){
+  window.location.href = "login.html";
+}
+document.getElementById("logoutBtn").addEventListener("click", () => {
+  sessionStorage.clear();
+  window.location.href = "login.html";
+});
+
+const addMsg = document.getElementById("addMsg");
+const addBtn = document.getElementById("addBtn");
+const studentsTable = document.getElementById("studentsTable");
+const studentsBody = document.getElementById("studentsBody");
+const emptyState = document.getElementById("emptyState");
+
+async function loadStudents(){
+  studentsBody.innerHTML = "";
+  const q = query(collection(db, "students"), orderBy("name"));
+  const snap = await getDocs(q);
+  if(snap.empty){
+    emptyState.style.display = "block";
+    studentsTable.style.display = "none";
+    return;
+  }
+  emptyState.style.display = "none";
+  studentsTable.style.display = "table";
+  let i = 1;
+  snap.forEach(docSnap => {
+    const data = docSnap.data();
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td>${i}</td><td>${data.name}</td><td>${data.schoolId}</td>`;
+    studentsBody.appendChild(tr);
+    i++;
+  });
+}
+
+document.getElementById("addStudentForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const name = document.getElementById("sName").value.trim();
+  const schoolId = document.getElementById("sId").value.trim();
+  if(!name || !schoolId) return;
+
+  addBtn.disabled = true;
+  addBtn.innerHTML = '<span class="spinner"></span>';
+  addMsg.className = "msg";
+
+  try{
+    await addDoc(collection(db, "students"), { name, schoolId });
+    addMsg.textContent = `Nadugang si ${name}.`;
+    addMsg.className = "msg ok show";
+    document.getElementById("addStudentForm").reset();
+    loadStudents();
+  }catch(err){
+    console.error(err);
+    addMsg.textContent = "Naay problema sa pagdugang.";
+    addMsg.className = "msg error show";
+  }finally{
+    addBtn.disabled = false;
+    addBtn.textContent = "Dugangi";
+  }
+});
+
+loadStudents();
+</script>
+</body>
+</html>

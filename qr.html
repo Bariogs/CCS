@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mga QR Code — CCS Attendance</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand"><span class="dot"></span> CCS Attendance</div>
+  <nav>
+    <span class="who" id="whoLabel"></span>
+    <a href="#" id="dashLink">Dashboard</a>
+    <a href="me.html">Mga Record</a>
+    <button id="logoutBtn">Log out</button>
+  </nav>
+</div>
+
+<div class="wrap">
+  <div class="card">
+    <p class="eyebrow">QR Codes</p>
+    <h1 class="page-title">Mga QR Code sa Attendance</h1>
+    <p class="page-sub">I-click ang usa ka QR code aron makita ang detalye. Gamita ang Share button aron ma-record kini sa listahan.</p>
+
+    <div id="grid" class="grid"></div>
+    <div id="emptyState" class="empty" style="display:none;">Wala pay QR code nga na-submit.</div>
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="modal-bg" id="modalBg">
+  <div class="modal">
+    <button class="close" id="closeModal">✕</button>
+    <div id="modalLoading" class="empty">Ginakuha ang detalye...</div>
+    <div id="modalContent" style="display:none;">
+      <p class="eyebrow" style="margin:0;">Attendance Detail</p>
+      <img id="modalPhoto" class="photo" src="" alt="photo">
+      <div class="row"><b id="modalName"></b></div>
+      <div class="row">📍 <span id="modalAddress"></span></div>
+      <div class="row">🕒 <span id="modalTime"></span></div>
+      <button class="btn gold block" id="shareBtn" style="margin-top:12px;">Share</button>
+      <div id="shareMsg" class="msg ok" style="margin-top:10px;"></div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { db } from "./firebase.js";
+import {
+  collection, getDocs, doc, getDoc, addDoc, serverTimestamp, orderBy, query
+} from "https://www.gstatic.com/firebasejs/11.9.1/firebase-firestore.js";
+
+// ---- Auth guard ----
+const role = sessionStorage.getItem("role");
+const displayName = sessionStorage.getItem("displayName");
+if(!role){
+  window.location.href = "login.html";
+}
+document.getElementById("whoLabel").textContent = displayName || "";
+document.getElementById("dashLink").href = role === "admin" ? "admin_dashboard.html" : "student_dashboard.html";
+document.getElementById("logoutBtn").addEventListener("click", () => {
+  sessionStorage.clear();
+  window.location.href = "login.html";
+});
+
+const grid = document.getElementById("grid");
+const emptyState = document.getElementById("emptyState");
+
+function formatTime(ts){
+  if(!ts || !ts.toDate) return "—";
+  return ts.toDate().toLocaleString();
+}
+
+async function loadQRs(){
+  const q = query(collection(db, "qr"), orderBy("timestamp", "desc"));
+  const snap = await getDocs(q);
+
+  if(snap.empty){
+    emptyState.style.display = "block";
+    return;
+  }
+
+  snap.forEach(docSnap => {
+    const data = docSnap.data();
+    const tile = document.createElement("div");
+    tile.className = "qr-tile";
+    tile.innerHTML = `
+      <img src="${data.qrImage}" alt="QR code">
+      <div class="name">${data.name}</div>
+      <div class="time">${formatTime(data.timestamp)}</div>
+    `;
+    tile.addEventListener("click", () => openModal(data.attendanceId));
+    grid.appendChild(tile);
+  });
+}
+
+// ---- Modal ----
+const modalBg = document.getElementById("modalBg");
+const modalLoading = document.getElementById("modalLoading");
+const modalContent = document.getElementById("modalContent");
+const modalPhoto = document.getElementById("modalPhoto");
+const modalName = document.getElementById("modalName");
+const modalAddress = document.getElementById("modalAddress");
+const modalTime = document.getElementById("modalTime");
+const shareBtn = document.getElementById("shareBtn");
+const shareMsg = document.getElementById("shareMsg");
+
+let currentAttendance = null;
+
+async function openModal(attendanceId){
+  modalBg.classList.add("show");
+  modalLoading.style.display = "block";
+  modalContent.style.display = "none";
+  shareMsg.className = "msg ok";
+
+  const snap = await getDoc(doc(db, "attendance", attendanceId));
+  if(snap.exists()){
+    const data = snap.data();
+    currentAttendance = { id: attendanceId, ...data };
+    modalPhoto.src = data.photo;
+    modalName.textContent = data.name;
+    modalAddress.textContent = data.address;
+    modalTime.textContent = formatTime(data.timestamp);
+    modalLoading.style.display = "none";
+    modalContent.style.display = "block";
+  } else {
+    modalLoading.textContent = "Wala nakit-an ang record.";
+  }
+}
+
+document.getElementById("closeModal").addEventListener("click", () => {
+  modalBg.classList.remove("show");
+});
+modalBg.addEventListener("click", (e) => {
+  if(e.target === modalBg) modalBg.classList.remove("show");
+});
+
+shareBtn.addEventListener("click", async () => {
+  if(!currentAttendance) return;
+  shareBtn.disabled = true;
+  shareBtn.innerHTML = '<span class="spinner"></span>';
+  try{
+    await addDoc(collection(db, "sharedRecords"), {
+      attendanceId: currentAttendance.id,
+      name: currentAttendance.name,
+      address: currentAttendance.address,
+      timestamp: serverTimestamp()
+    });
+    shareMsg.textContent = "Na-share na! Makita na sa Mga Record.";
+    shareMsg.classList.add("show");
+  }catch(err){
+    console.error(err);
+    shareMsg.className = "msg error show";
+    shareMsg.textContent = "Naay problema sa pag-share.";
+  }finally{
+    shareBtn.disabled = false;
+    shareBtn.textContent = "Share";
+  }
+});
+
+loadQRs();
+</script>
+</body>
+</html>

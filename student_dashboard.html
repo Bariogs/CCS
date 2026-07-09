@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Student Dashboard — CCS Attendance</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand"><span class="dot"></span> CCS Attendance</div>
+  <nav>
+    <span class="who" id="whoLabel"></span>
+    <a href="qr.html">Mga QR Code</a>
+    <button id="logoutBtn">Log out</button>
+  </nav>
+</div>
+
+<div class="wrap">
+  <div class="card">
+    <p class="eyebrow">Student Dashboard</p>
+    <h1 class="page-title" id="greeting">Maayong adlaw!</h1>
+    <p class="page-sub">I-click ang button sa ubos aron mag-take og attendance karong adlawa.</p>
+
+    <!-- STEP 0: start -->
+    <div id="stepStart" class="attend-flow">
+      <button class="btn gold" id="startBtn">📷 Take Attendance</button>
+    </div>
+
+    <!-- STEP 1: location check -->
+    <div id="stepLocation" class="attend-flow" style="display:none;">
+      <div class="status-line">
+        <span class="status-dot" id="locDot"></span>
+        <span id="locText">Ginakuha ang imong location...</span>
+      </div>
+      <div id="locError" class="msg error"></div>
+    </div>
+
+    <!-- STEP 2: camera -->
+    <div id="stepCamera" class="attend-flow" style="display:none;">
+      <div class="status-line" style="justify-content:center;">
+        <span class="status-dot on"></span>
+        <span id="addressText">Address: —</span>
+      </div>
+      <video id="video" autoplay playsinline></video>
+      <canvas id="canvas" style="display:none;"></canvas>
+      <br>
+      <button class="btn gold" id="captureBtn">Kuha og Picture</button>
+      <button class="btn outline" id="cancelBtn">Cancel</button>
+    </div>
+
+    <!-- STEP 3: preview / submit -->
+    <div id="stepPreview" class="attend-flow" style="display:none;">
+      <canvas id="photoPreview" class="preview"></canvas>
+      <div style="margin-top:14px;">
+        <button class="btn gold" id="submitBtn">Submit Attendance</button>
+        <button class="btn outline" id="retakeBtn">Retake</button>
+      </div>
+    </div>
+
+    <!-- STEP 4: success -->
+    <div id="stepDone" class="attend-flow" style="display:none;">
+      <div class="msg ok show">Nadawat na ang imong attendance!</div>
+      <div id="qrHolder" style="display:flex; justify-content:center; margin:16px 0;"></div>
+      <a href="qr.html" class="btn gold">Tan-awa ang QR Code</a>
+    </div>
+
+  </div>
+</div>
+
+<script type="module">
+import { db } from "./firebase.js";
+import {
+  collection, addDoc, serverTimestamp
+} from "https://www.gstatic.com/firebasejs/11.9.1/firebase-firestore.js";
+
+// ---- Auth guard ----
+const role = sessionStorage.getItem("role");
+const displayName = sessionStorage.getItem("displayName");
+if(role !== "student" || !displayName){
+  window.location.href = "login.html";
+}
+document.getElementById("whoLabel").textContent = displayName || "";
+document.getElementById("greeting").textContent = `Kumusta, ${displayName}!`;
+
+document.getElementById("logoutBtn").addEventListener("click", () => {
+  sessionStorage.clear();
+  window.location.href = "login.html";
+});
+
+// ---- Elements ----
+const stepStart = document.getElementById("stepStart");
+const stepLocation = document.getElementById("stepLocation");
+const stepCamera = document.getElementById("stepCamera");
+const stepPreview = document.getElementById("stepPreview");
+const stepDone = document.getElementById("stepDone");
+
+const startBtn = document.getElementById("startBtn");
+const captureBtn = document.getElementById("captureBtn");
+const cancelBtn = document.getElementById("cancelBtn");
+const submitBtn = document.getElementById("submitBtn");
+const retakeBtn = document.getElementById("retakeBtn");
+
+const locDot = document.getElementById("locDot");
+const locText = document.getElementById("locText");
+const locError = document.getElementById("locError");
+const addressText = document.getElementById("addressText");
+
+const video = document.getElementById("video");
+const canvas = document.getElementById("canvas");
+const photoPreview = document.getElementById("photoPreview");
+
+let stream = null;
+let capturedDataUrl = null;
+let locationData = null; // { lat, lng, address }
+
+function showStep(step){
+  [stepStart, stepLocation, stepCamera, stepPreview, stepDone].forEach(s => s.style.display = "none");
+  step.style.display = "block";
+}
+
+// ---- Step 1: request geolocation, then reverse-geocode ----
+async function reverseGeocode(lat, lng){
+  try{
+    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+    const data = await res.json();
+    return data.display_name || `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+  }catch(err){
+    return `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+  }
+}
+
+startBtn.addEventListener("click", () => {
+  showStep(stepLocation);
+  locDot.className = "status-dot";
+  locText.textContent = "Ginakuha ang imong location...";
+  locError.className = "msg error";
+
+  if(!navigator.geolocation){
+    locDot.className = "status-dot off";
+    locText.textContent = "Wala nay location support ang imong browser.";
+    locError.textContent = "Dili ka makakuha og attendance kung wala ma-enable ang location.";
+    locError.classList.add("show");
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(async (pos) => {
+    const lat = pos.coords.latitude;
+    const lng = pos.coords.longitude;
+    locText.textContent = "Nakuha ang location. Ginakuha ang address...";
+    const address = await reverseGeocode(lat, lng);
+
+    locationData = { lat, lng, address };
+    locDot.className = "status-dot on";
+    locText.textContent = "Location OK!";
+
+    // proceed to camera
+    await startCamera();
+  }, (err) => {
+    locDot.className = "status-dot off";
+    locText.textContent = "Wala ma-enable ang location.";
+    locError.textContent = "Kinahanglan e-allow ang location aron makakuha og attendance. Palihug tugoti ang location access dayon sulayi pag-usab.";
+    locError.classList.add("show");
+  }, { enableHighAccuracy: true, timeout: 15000 });
+});
+
+// ---- Step 2: camera ----
+async function startCamera(){
+  try{
+    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false });
+    video.srcObject = stream;
+    addressText.textContent = `Address: ${locationData.address}`;
+    showStep(stepCamera);
+  }catch(err){
+    locDot.className = "status-dot off";
+    locText.textContent = "Wala ma-access ang camera.";
+    locError.textContent = "Kinahanglan e-allow ang camera access aron makakuha og picture.";
+    locError.classList.add("show");
+  }
+}
+
+function stopCamera(){
+  if(stream){
+    stream.getTracks().forEach(t => t.stop());
+    stream = null;
+  }
+}
+
+cancelBtn.addEventListener("click", () => {
+  stopCamera();
+  showStep(stepStart);
+});
+
+captureBtn.addEventListener("click", () => {
+  // resize down for reasonable Firestore document size
+  const targetW = 480;
+  const targetH = video.videoHeight / video.videoWidth * targetW || 360;
+  canvas.width = targetW;
+  canvas.height = targetH;
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(video, 0, 0, targetW, targetH);
+  capturedDataUrl = canvas.toDataURL("image/jpeg", 0.6);
+
+  photoPreview.width = targetW;
+  photoPreview.height = targetH;
+  photoPreview.getContext("2d").drawImage(canvas, 0, 0);
+
+  stopCamera();
+  showStep(stepPreview);
+});
+
+retakeBtn.addEventListener("click", async () => {
+  await startCamera();
+});
+
+// ---- Step 3: submit ----
+submitBtn.addEventListener("click", async () => {
+  submitBtn.disabled = true;
+  submitBtn.innerHTML = '<span class="spinner"></span>';
+
+  try{
+    // 1. Save attendance record
+    const attendanceRef = await addDoc(collection(db, "attendance"), {
+      name: displayName,
+      photo: capturedDataUrl,
+      address: locationData.address,
+      lat: locationData.lat,
+      lng: locationData.lng,
+      timestamp: serverTimestamp()
+    });
+
+    // 2. Generate QR code (encodes the attendance doc id)
+    const qrHolder = document.getElementById("qrHolder");
+    qrHolder.innerHTML = "";
+    const qrTemp = document.createElement("div");
+    new QRCode(qrTemp, {
+      text: JSON.stringify({ id: attendanceRef.id, name: displayName }),
+      width: 220,
+      height: 220
+    });
+
+    // give the library a tick to render, then extract the image
+    await new Promise(r => setTimeout(r, 250));
+    let qrDataUrl = "";
+    const qrCanvas = qrTemp.querySelector("canvas");
+    const qrImg = qrTemp.querySelector("img");
+    if(qrCanvas){
+      qrDataUrl = qrCanvas.toDataURL("image/png");
+    } else if(qrImg){
+      qrDataUrl = qrImg.src;
+    }
+
+    // 3. Save QR record, referencing the attendance doc
+    await addDoc(collection(db, "qr"), {
+      attendanceId: attendanceRef.id,
+      name: displayName,
+      qrImage: qrDataUrl,
+      timestamp: serverTimestamp()
+    });
+
+    // 4. Show success + display the QR
+    const displayQR = document.createElement("img");
+    displayQR.src = qrDataUrl;
+    displayQR.style.width = "220px";
+    displayQR.style.borderRadius = "10px";
+    displayQR.style.border = "1px solid #dfdbd0";
+    qrHolder.appendChild(displayQR);
+
+    showStep(stepDone);
+  }catch(err){
+    console.error(err);
+    alert("Naay problema sa pag-submit. Sulayi pag-usab.");
+    submitBtn.disabled = false;
+    submitBtn.textContent = "Submit Attendance";
+  }
+});
+</script>
+</body>
+</html>

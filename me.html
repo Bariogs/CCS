@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mga Record — CCS Attendance</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand"><span class="dot"></span> CCS Attendance</div>
+  <nav>
+    <span class="who" id="whoLabel"></span>
+    <a href="#" id="dashLink">Dashboard</a>
+    <a href="qr.html">Mga QR Code</a>
+    <button id="logoutBtn">Log out</button>
+  </nav>
+</div>
+
+<div class="wrap">
+  <div class="card">
+    <p class="eyebrow">Shared Records</p>
+    <h1 class="page-title">Mga Na-share nga Attendance</h1>
+    <p class="page-sub">Kini nga listahan gikan sa mga QR code nga gi-share sa <b>qr.html</b>.</p>
+
+    <button class="btn gold" id="downloadBtn" style="display:none;">⬇ I-download as Excel</button>
+
+    <table class="records" id="recordsTable" style="display:none;">
+      <thead>
+        <tr><th>#</th><th>Name</th><th>Address</th><th>Date &amp; Time</th></tr>
+      </thead>
+      <tbody id="recordsBody"></tbody>
+    </table>
+    <div id="emptyState" class="empty" style="display:none;">Wala pay na-share nga record.</div>
+  </div>
+</div>
+
+<script type="module">
+import { db } from "./firebase.js";
+import { collection, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-firestore.js";
+
+// ---- Auth guard ----
+const role = sessionStorage.getItem("role");
+const displayName = sessionStorage.getItem("displayName");
+if(!role){
+  window.location.href = "login.html";
+}
+document.getElementById("whoLabel").textContent = displayName || "";
+document.getElementById("dashLink").href = role === "admin" ? "admin_dashboard.html" : "student_dashboard.html";
+document.getElementById("logoutBtn").addEventListener("click", () => {
+  sessionStorage.clear();
+  window.location.href = "login.html";
+});
+
+// Only admin can download the Excel file
+if(role === "admin"){
+  document.getElementById("downloadBtn").style.display = "inline-flex";
+}
+
+const recordsBody = document.getElementById("recordsBody");
+const recordsTable = document.getElementById("recordsTable");
+const emptyState = document.getElementById("emptyState");
+let rows = [];
+
+function formatTime(ts){
+  if(!ts || !ts.toDate) return "—";
+  return ts.toDate().toLocaleString();
+}
+
+async function loadRecords(){
+  const q = query(collection(db, "sharedRecords"), orderBy("timestamp", "desc"));
+  const snap = await getDocs(q);
+
+  if(snap.empty){
+    emptyState.style.display = "block";
+    return;
+  }
+
+  recordsTable.style.display = "table";
+  let i = 1;
+  snap.forEach(docSnap => {
+    const data = docSnap.data();
+    rows.push({
+      "#": i,
+      "Name": data.name,
+      "Address": data.address || "",
+      "Date & Time": formatTime(data.timestamp)
+    });
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td>${i}</td><td>${data.name}</td><td>${data.address || ""}</td><td>${formatTime(data.timestamp)}</td>`;
+    recordsBody.appendChild(tr);
+    i++;
+  });
+}
+
+document.getElementById("downloadBtn").addEventListener("click", () => {
+  if(rows.length === 0){
+    alert("Wala pay data nga i-download.");
+    return;
+  }
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Attendance");
+  const fileName = `CCS-Attendance-${new Date().toISOString().slice(0,10)}.xlsx`;
+  XLSX.writeFile(wb, fileName);
+});
+
+loadRecords();
+</script>
+</body>
+</html>

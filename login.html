@@ -1,31 +1,108 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Log In | CCS Attendance System</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Login — CCS Attendance</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-  <header>
-    <h1>CCS Department Attendance System</h1>
-  </header>
+<div class="center-screen">
+  <div class="card" style="max-width:400px; width:100%;">
+    <p class="eyebrow">CCS Attendance System</p>
+    <h1 class="page-title">Log in</h1>
+    <p class="page-sub">Gamita ang imong ngalan ug School ID isip password.</p>
 
-  <main>
-    <form id="loginForm" autocomplete="off">
-      <label for="email">Email</label>
-      <input type="text" id="email" name="email" placeholder="juan.delacruz@student.edu" required />
+    <div id="msg" class="msg error"></div>
 
-      <label for="password">Password (School ID)</label>
-      <input type="password" id="password" name="password" placeholder="COL-00789" required />
-
-      <button type="submit">Log In</button>
-
-      <p id="loginError" role="alert"></p>
+    <form id="loginForm">
+      <div class="field">
+        <label for="username">Ngalan (Username)</label>
+        <input type="text" id="username" autocomplete="username" required placeholder="e.g. Juan Dela Cruz">
+      </div>
+      <div class="field">
+        <label for="password">School ID (Password)</label>
+        <input type="password" id="password" autocomplete="current-password" required placeholder="e.g. COL-00789">
+      </div>
+      <button type="submit" class="btn block" id="loginBtn">
+        <span id="loginBtnText">Login</span>
+      </button>
     </form>
-  </main>
+  </div>
+</div>
 
-  <script type="module" src="login.js"></script>
-  <script type="module" src="student_data.js"></script>
+<script type="module">
+import { db } from "./firebase.js";
+import {
+  collection, query, where, getDocs
+} from "https://www.gstatic.com/firebasejs/11.9.1/firebase-firestore.js";
+
+// Hardcoded admin credentials
+const ADMIN_USER = "ccsdepevosanser1willbedone";
+const ADMIN_PASS = "ITmeperodlimetigayoogwashingmachinTVunsapadiha";
+
+const form = document.getElementById("loginForm");
+const msg = document.getElementById("msg");
+const loginBtn = document.getElementById("loginBtn");
+const loginBtnText = document.getElementById("loginBtnText");
+
+function showError(text){
+  msg.textContent = text;
+  msg.className = "msg error show";
+}
+
+form.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  msg.className = "msg";
+
+  const username = document.getElementById("username").value.trim();
+  const password = document.getElementById("password").value.trim();
+
+  if(!username || !password){
+    showError("Palihug sulati ang ngalan ug password.");
+    return;
+  }
+
+  loginBtn.disabled = true;
+  loginBtnText.innerHTML = '<span class="spinner"></span>';
+
+  try{
+    // 1. Check admin credentials first
+    if(username === ADMIN_USER && password === ADMIN_PASS){
+      sessionStorage.setItem("role", "admin");
+      sessionStorage.setItem("displayName", "Admin");
+      window.location.href = "admin_dashboard.html";
+      return;
+    }
+
+    // 2. Check student credentials against Firestore "students" collection
+    const studentsRef = collection(db, "students");
+    const q = query(
+      studentsRef,
+      where("name", "==", username),
+      where("schoolId", "==", password)
+    );
+    const snap = await getDocs(q);
+
+    if(!snap.empty){
+      const studentDoc = snap.docs[0].data();
+      sessionStorage.setItem("role", "student");
+      sessionStorage.setItem("displayName", studentDoc.name);
+      window.location.href = "student_dashboard.html";
+    } else {
+      showError("Sayop ang ngalan o School ID. Palihug sulayi pag-usab.");
+    }
+  }catch(err){
+    console.error(err);
+    showError("Naay problema sa pag-login. Sulayi pag-usab.");
+  }finally{
+    loginBtn.disabled = false;
+    loginBtnText.textContent = "Login";
+  }
+});
+</script>
 </body>
 </html>
