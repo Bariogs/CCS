@@ -1,0 +1,50 @@
+# CCS Attendance System
+
+Frontend-only attendance app (Firebase Firestore for the database). No CSS included per request — style it however you like.
+
+## Files
+- `index.html` / `index.js` — landing page (CCS Department), countdown popup, and gated Log In button
+- `login.html` / `login.js` — Email + School ID login checked against a hardcoded student list; hidden admin login
+- `students-data.js` — the hardcoded list of student accounts (Name, Email, School ID)
+- `student.html` / `student.js` — selfie capture, geolocation, submit, QR code
+- `admin.html` / `admin.js` — read-only student list, set schedule, live feed, QR Code tab (approve/reject), Transfer tab (Excel export)
+- `firebase.js` — put your Firebase project config here
+
+## Student accounts (updated)
+Student accounts are now hardcoded directly in `students-data.js`, the same way the admin credentials are hardcoded in `login.js`. To add or remove a student, edit that file — no Firestore write or admin form involved.
+
+At login, the student types their **Email** as the username and their **School ID** (e.g. `COL-00789`) as the password. `login.js` checks that pair against the list in `students-data.js` — only an exact match lets them through to `student.html`. `admin.html` shows this same list read-only, as a quick reference.
+
+Since this list ships in the JavaScript that reaches the browser, anyone who opens DevTools can read it (same as any frontend-only code) — it's just no longer sitting in an open Firestore collection. This is fine for a list of school IDs/emails (not a secret like the admin password), but keep the same expectation in mind: real access control for something more sensitive would need a backend.
+
+## Attendance schedule (new)
+Admin sets a start and end date/time on `admin.html` ("Set Attendance Date and Time"). This is saved to the Firestore doc `settings/attendanceWindow` as `{ start, end }` (Firestore Timestamps).
+
+`index.js` listens to that doc in real time and checks the current time every second:
+- **Before start** → the Log In button is hidden and a live countdown popup shows time remaining until it opens.
+- **Between start and end** → the countdown disappears and the Log In button appears.
+- **After end** → the Log In button disappears again and a "attendance has ended" message shows instead.
+
+Since this all runs in each visitor's own browser, it depends on the visitor's device clock. If you need it tamper-proof (someone changing their phone's clock to sneak in early/late), that check would need to move server-side too — flagging this the same way as the admin-login note below.
+
+## Setup
+1. Create a Firebase project → enable **Cloud Firestore**.
+2. Fill in your config values in `firebase.js`.
+3. Serve the folder over **https** (or `localhost`) — camera and geolocation APIs require a secure context.
+4. Firestore collection used: `attendance`, with fields `schoolId, name, photo, latitude, longitude, address, status, createdAt`.
+
+## Important: about "hiding" the admin login from DevTools
+You asked for the admin username/password to be invisible in Chrome DevTools so no one else can log in as admin. Being fully transparent about what's possible here:
+
+**Nothing shipped to the browser can ever be truly hidden.** Any JavaScript, no matter how it's obfuscated, minified, or hidden in a separate file, is downloaded to the user's device and can be read. There is no frontend-only trick that changes this.
+
+What I did instead: the admin username/password are **not stored as plain text** anywhere in the code. `login.js` only stores a SHA-256 hash of `"username:password"` and compares hashes, so a person opening DevTools sees a hash, not the actual credentials. This stops someone from just reading the password off the page, but it is **not real security** — the login check still runs entirely on the visitor's device, so a technically determined person could eventually find another way around it.
+
+For a system that actually needs to keep the admin panel locked down, the correct fix is to move authentication server-side — the easiest path here is **Firebase Authentication** (email/password or a custom admin account) combined with **Firestore Security Rules** that only allow writes to the "accepted"/reject actions when the request comes from an authenticated admin user. I kept this version frontend-only because that's what you asked for, but wanted to flag this clearly rather than let it seem more secure than it is.
+
+## Assumptions made (things the spec left a bit open)
+- The QR code encodes `{ schoolId, name, address }` — never the photo, as requested.
+- "Quick" button on the admin QR tab = **Accept All**, which moves every pending record to the Transfer tab.
+- **Reject** permanently deletes that student's record from Firestore.
+- The "Live Attendance Feed" section on `admin.html` is the always-updating list of everyone who has taken their picture (per your description of admin.html "listing names as they take attendance"), separate from the QR/Transfer workflow.
+- Reverse geocoding (turning lat/long into a readable address like "Colegio de San Francisco de Javier, Rizal, Z.N.") uses the free OpenStreetMap Nominatim API; if that lookup fails it falls back to showing raw coordinates.

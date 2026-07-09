@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Take Attendance | CCS Attendance System</title>
+</head>
+<body>
+
+  <header>
+    <h1>Take Your Attendance</h1>
+    <p id="welcomeText"></p>
+  </header>
+
+  <main>
+
+    <section id="cameraSection">
+      <h2>Step 1: Take a Selfie</h2>
+      <video id="video" autoplay playsinline></video>
+      <canvas id="canvas" style="display:none;"></canvas>
+      <img id="selfiePreview" alt="Your selfie preview" style="display:none;" />
+      <div>
+        <button type="button" id="captureBtn">Take Selfie</button>
+        <button type="button" id="retakeBtn" style="display:none;">Retake</button>
+      </div>
+    </section>
+
+    <section id="locationSection">
+      <h2>Step 2: Turn On Your Location</h2>
+      <button type="button" id="locationBtn">Enable Location</button>
+      <p id="locationStatus">Location not yet captured.</p>
+    </section>
+
+    <section id="submitSection">
+      <h2>Step 3: Submit Attendance</h2>
+      <button type="button" id="submitBtn" disabled>Submit Attendance</button>
+      <p id="submitStatus"></p>
+    </section>
+
+    <section id="qrSection" style="display:none;">
+      <h2>Your Attendance QR Code</h2>
+      <canvas id="qrCanvas"></canvas>
+      <p>Attendance recorded successfully. You may now close this page.</p>
+    </section>
+
+  </main>
+
+  <script src="https://unpkg.com/qrcode@1.5.4/build/qrcode.min.js"></script>
+  <script type="module" src="student.js"></script>
+</body>
+</html>

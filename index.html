@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CCS Department | Attendance System</title>
+</head>
+<body>
+
+  <header>
+    <h1>Colegio de San Francisco de Javier</h1>
+    <h2>College of Computer Studies (CCS) Department</h2>
+  </header>
+
+  <main>
+    <section>
+      <p>
+        Welcome to the official CCS Department Attendance System.
+        Use your School ID to log in and record your attendance
+        with a selfie and your current location.
+      </p>
+
+      <div id="countdownPopup" style="display:none;">
+        <p id="countdownLabel">Attendance opens in:</p>
+        <p id="countdownTimer"></p>
+      </div>
+
+      <p id="closedMessage" style="display:none;">
+        Attendance for this schedule has ended.
+      </p>
+
+      <a href="login.html">
+        <button type="button" id="loginBtn" style="display:none;">Log In</button>
+      </a>
+    </section>
+  </main>
+
+  <footer>
+    <p>Colegio de San Francisco de Javier &mdash; Rizal, Zamboanga del Norte</p>
+  </footer>
+
+  <script type="module" src="index.js"></script>
+</body>
+</html>

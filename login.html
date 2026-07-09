@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Log In | CCS Attendance System</title>
+</head>
+<body>
+
+  <header>
+    <h1>CCS Department Attendance System</h1>
+  </header>
+
+  <main>
+    <form id="loginForm" autocomplete="off">
+      <label for="email">Email</label>
+      <input type="text" id="email" name="email" placeholder="juan.delacruz@student.edu" required />
+
+      <label for="password">Password (School ID)</label>
+      <input type="password" id="password" name="password" placeholder="COL-00789" required />
+
+      <button type="submit">Log In</button>
+
+      <p id="loginError" role="alert"></p>
+    </form>
+  </main>
+
+  <script type="module" src="login.js"></script>
+  <script type="module" src="student_data.js"></script>
+</body>
+</html>

@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Dashboard | CCS Attendance System</title>
+</head>
+<body>
+
+  <header>
+    <h1>CCS Attendance &mdash; Admin Dashboard</h1>
+    <button type="button" id="logoutBtn">Log Out</button>
+  </header>
+
+  <main>
+
+    <section id="registerSection">
+      <h2>Registered Students</h2>
+      <p>
+        Student accounts are hardcoded in <code>students-data.js</code>.
+        To add or remove a student, edit that file directly (Name, Email, School ID).
+      </p>
+      <ul id="registeredList"></ul>
+    </section>
+
+    <section id="scheduleSection">
+      <h2>Set Attendance Date and Time</h2>
+      <label for="scheduleStart">Start</label>
+      <input type="datetime-local" id="scheduleStart" />
+
+      <label for="scheduleEnd">End</label>
+      <input type="datetime-local" id="scheduleEnd" />
+
+      <button type="button" id="saveScheduleBtn">Save Schedule</button>
+      <p id="scheduleStatus"></p>
+    </section>
+
+    <section id="liveFeedSection">
+      <h2>Live Attendance Feed</h2>
+      <ul id="liveFeedList"></ul>
+    </section>
+
+    <nav id="tabNav">
+      <button type="button" id="qrTabBtn">QR Code</button>
+      <button type="button" id="transferTabBtn">Transfer</button>
+    </nav>
+
+    <section id="qrTab">
+      <h2>Pending QR Codes</h2>
+      <button type="button" id="acceptAllBtn">Accept All &rarr; Transfer</button>
+      <div id="qrList"></div>
+    </section>
+
+    <section id="transferTab" style="display:none;">
+      <h2>Confirmed Attendance</h2>
+      <button type="button" id="downloadExcelBtn">Download Excel</button>
+      <table id="transferTable">
+        <thead>
+          <tr>
+            <th>School ID</th>
+            <th>Name</th>
+            <th>Address</th>
+            <th>Date/Time</th>
+          </tr>
+        </thead>
+        <tbody id="transferTableBody"></tbody>
+      </table>
+    </section>
+
+  </main>
+
+  <script src="https://unpkg.com/qrcode@1.5.4/build/qrcode.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script type="module" src="admin.js"></script>
+</body>
+</html>
