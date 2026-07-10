@@ -25,9 +25,10 @@
   <div class="card">
     <p class="eyebrow">Shared Records</p>
     <h1 class="page-title">Shared Records</h1>
-    <p class="page-sub">This list contains records shared from the <b>qr.html</b> page.</p>
+    <p class="page-sub">This list contains records shared from the <b>qr.html</b> page. Downloading clears this list — it will only show new records shared after that.</p>
 
-    <button class="btn gold" id="downloadBtn" style="display:none;">⬇ Download as Excel</button>
+    <button class="btn gold" id="downloadBtn" style="display:none;"><span id="downloadBtnText">⬇ Download as Excel</span></button>
+    <div id="downloadMsg" class="msg"></div>
 
     <div class="table-scroll" id="recordsTableWrap" style="display:none;">
       <table class="records" id="recordsTable">
@@ -43,7 +44,9 @@
 
 <script type="module">
 import { db } from "./firebase.js";
-import { collection, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-firestore.js";
+import {
+  collection, getDocs, query, orderBy, deleteDoc, doc
+} from "https://www.gstatic.com/firebasejs/11.9.1/firebase-firestore.js";
 
 // ---- Auth guard ----
 const role = sessionStorage.getItem("role");
@@ -63,14 +66,30 @@ if(role === "admin"){
   document.getElementById("downloadBtn").style.display = "inline-flex";
 }
 
+const downloadBtn = document.getElementById("downloadBtn");
+const downloadBtnText = document.getElementById("downloadBtnText");
+const downloadMsg = document.getElementById("downloadMsg");
 const recordsBody = document.getElementById("recordsBody");
 const recordsTableWrap = document.getElementById("recordsTableWrap");
 const emptyState = document.getElementById("emptyState");
+
+// rows: the data used to build the Excel file
+// docIds: the Firestore doc IDs behind those same rows, so we know
+// exactly what to delete once the download has gone through
 let rows = [];
+let docIds = [];
 
 function formatTime(ts){
   if(!ts || !ts.toDate) return "—";
   return ts.toDate().toLocaleString();
+}
+
+function showEmpty(){
+  recordsBody.innerHTML = "";
+  recordsTableWrap.style.display = "none";
+  emptyState.style.display = "block";
+  rows = [];
+  docIds = [];
 }
 
 async function loadRecords(){
@@ -78,14 +97,20 @@ async function loadRecords(){
   const snap = await getDocs(q);
 
   if(snap.empty){
-    emptyState.style.display = "block";
+    showEmpty();
     return;
   }
 
+  emptyState.style.display = "none";
   recordsTableWrap.style.display = "block";
+  recordsBody.innerHTML = "";
+  rows = [];
+  docIds = [];
+
   let i = 1;
   snap.forEach(docSnap => {
     const data = docSnap.data();
+    docIds.push(docSnap.id);
     rows.push({
       "#": i,
       "Name": data.name,
@@ -99,16 +124,45 @@ async function loadRecords(){
   });
 }
 
-document.getElementById("downloadBtn").addEventListener("click", () => {
+downloadBtn.addEventListener("click", async () => {
   if(rows.length === 0){
     alert("No data to download.");
     return;
   }
-  const ws = XLSX.utils.json_to_sheet(rows);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Attendance");
-  const fileName = `CCS-Attendance-${new Date().toISOString().slice(0,10)}.xlsx`;
-  XLSX.writeFile(wb, fileName);
+
+  downloadBtn.disabled = true;
+  downloadBtnText.innerHTML = '<span class="spinner"></span>';
+  downloadMsg.className = "msg";
+  downloadMsg.textContent = "";
+
+  try{
+    // 1. Generate and save the Excel file first — the list should
+    //    only be cleared once the download has actually gone through.
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Attendance");
+    const fileName = `CCS-Attendance-${new Date().toISOString().slice(0,10)}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+
+    // 2. Delete every shared record that was included in this download,
+    //    so the names disappear from the list until new ones are shared.
+    await Promise.all(docIds.map(id => deleteDoc(doc(db, "sharedRecords", id))));
+
+    downloadMsg.textContent = "Downloaded and cleared. The list will refill as new records are shared.";
+    downloadMsg.className = "msg ok show";
+
+    showEmpty();
+  }catch(err){
+    console.error("Failed to clear shared records after download:", err);
+    downloadMsg.textContent = "Downloaded, but there was a problem clearing the list. Please try again.";
+    downloadMsg.className = "msg error show";
+    // reload from Firestore so the table reflects whatever did or
+    // didn't actually get deleted, instead of guessing
+    loadRecords();
+  }finally{
+    downloadBtn.disabled = false;
+    downloadBtnText.textContent = "⬇ Download as Excel";
+  }
 });
 
 loadRecords();
