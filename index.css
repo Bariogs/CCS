@@ -1,65 +1,317 @@
-*{
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
+/* ===========================================================
+   CCS Attendance — Public Entry Screen
+   Same "scan console" language as the admin panel (navy + brass
+   gold on parchment), but staged as a boarding-pass / departure-
+   board moment: the countdown is the hero, since the whole point
+   of this screen is "is the attendance window open yet?"
+   =========================================================== */
+
+:root{
+  --navy-deep:  #0E1A33;
+  --navy:       #16264A;
+  --navy-soft:  #29385C;
+
+  --gold:       #C89B3C;
+  --gold-deep:  #A87F2A;
+  --gold-pale:  #E9D6A2;
+
+  --paper:      #F6F1E4;
+  --paper-alt:  #EFE7D3;
+  --paper-line: #DCD2B8;
+
+  --ink:        #1B1F27;
+  --ink-soft:   #5B5F6B;
+  --ink-faint:  #8B8E97;
+
+  --err:        #B3402B;
+  --err-bg:     #FBEAE4;
+  --err-line:   #EFC7B8;
+
+  --font-display: "Poppins", "Inter", sans-serif;
+  --font-body: "Inter", "Poppins", sans-serif;
+
+  --radius: 14px;
+  --radius-sm: 8px;
+  --ease: cubic-bezier(.22,.9,.28,1);
+}
+
+@media (prefers-reduced-motion: reduce){
+  *{ animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; scroll-behavior: auto !important; }
+}
+
+*, *::before, *::after{ box-sizing: border-box; }
+
+html{
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 body{
-    font-family: Arial, Helvetica, sans-serif;
-    background: linear-gradient(to bottom,
-        #f8f7f3 0%,
-        #f6f4ef 50%,
-        #f3f1ec 100%);
-    color: #333;
-    min-height: 100vh;
+  margin: 0;
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font-body);
+  color: var(--ink);
+  background:
+    radial-gradient(1100px 460px at 50% -12%, rgba(200,155,60,.14), transparent 55%),
+    repeating-linear-gradient(0deg, rgba(27,31,39,.025) 0 1px, transparent 1px 26px),
+    var(--paper);
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  overflow-x: hidden;
+  overscroll-behavior-y: contain;
 }
 
+::selection{ background: var(--gold-pale); color: var(--navy-deep); }
+
+a:focus-visible, button:focus-visible{
+  outline: 2px solid var(--gold-deep);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* ===========================================================
+   Header — the institutional letterhead
+   =========================================================== */
 header{
-    text-align: center;
-    padding: 40px 20px;
+  text-align: center;
+  padding: 44px 20px 28px;
+  padding-top: max(44px, env(safe-area-inset-top));
+  color: var(--paper);
+  background: var(--navy-deep);
+  border-bottom: 3px solid var(--gold);
 }
 
 header h1{
-    font-size: 2rem;
-    color: #1f2937;
+  margin: 0 0 6px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(1.25rem, 4.5vw, 1.65rem);
+  letter-spacing: -.01em;
+  line-height: 1.25;
 }
 
 header h2{
-    margin-top: 10px;
-    color: #555;
-    font-weight: normal;
+  margin: 0;
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: clamp(.85rem, 2.6vw, .98rem);
+  color: var(--gold-pale);
+  letter-spacing: .04em;
+  text-transform: uppercase;
 }
 
+/* ===========================================================
+   Main — the boarding card
+   =========================================================== */
 main{
-    max-width: 700px;
-    margin: auto;
-    text-align: center;
-    padding: 30px;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 18px;
 }
 
-main p{
-    margin-bottom: 20px;
-    line-height: 1.7;
+main > p{
+  max-width: 480px;
+  margin: 0 auto 22px;
+  text-align: center;
+  color: var(--ink-soft);
+  font-size: 1rem;
+  line-height: 1.6;
+  position: relative;
 }
 
+/* wrap the whole entry flow in one card-like column so it reads as
+   a single ticket/boarding-pass unit rather than loose page text */
+main{
+  position: relative;
+}
+main::before{
+  content: "";
+}
+
+.wrap-hero{
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+/* Since the HTML doesn't have a wrapping container, style the direct
+   children of <main> to form that column, with a card-style backdrop
+   behind the interactive controls only. */
+main > p,
+#countdownPopup,
+#closedMessage,
+#loginBtn,
+#loginChoice{
+  max-width: 480px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* ===========================================================
+   Countdown — the departure-board moment (signature element)
+   =========================================================== */
+#countdownPopup{
+  position: relative;
+  background: var(--paper-alt);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--radius);
+  padding: 22px 22px 24px;
+  margin-bottom: 22px;
+  box-shadow: 0 1px 2px rgba(14,26,51,.05), 0 14px 28px -20px rgba(14,26,51,.4);
+}
+
+/* corner brackets echoing the admin console's scan-target motif */
+#countdownPopup::before,
+#countdownPopup::after{
+  content: "";
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  border-color: var(--gold);
+  border-style: solid;
+  opacity: .6;
+}
+#countdownPopup::before{
+  top: 9px; left: 9px;
+  border-width: 2px 0 0 2px;
+  border-top-left-radius: 4px;
+}
+#countdownPopup::after{
+  bottom: 9px; right: 9px;
+  border-width: 0 2px 2px 0;
+  border-bottom-right-radius: 4px;
+}
+
+#countdownLabel{
+  margin: 0 0 8px;
+  font-size: .74rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .14em;
+  color: var(--gold-deep);
+}
+
+#countdownTimer{
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(1.8rem, 8vw, 2.4rem);
+  color: var(--navy-deep);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: .02em;
+}
+
+/* closed-state message: calm, not alarming, but clearly final */
+#closedMessage{
+  background: var(--err-bg);
+  border: 1px solid var(--err-line);
+  color: var(--err);
+  font-weight: 500;
+  font-size: .95rem;
+  padding: 14px 18px;
+  border-radius: var(--radius-sm);
+  margin-bottom: 20px;
+}
+
+/* ===========================================================
+   Buttons
+   =========================================================== */
 button{
-    background: #0d6efd;
-    color: white;
-    border: none;
-    padding: 12px 30px;
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 16px;
-    transition: .3s;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: background .15s var(--ease), color .15s var(--ease), border-color .15s var(--ease), transform .1s var(--ease);
+}
+button:active{ transform: translateY(1px); }
+
+#loginBtn{
+  display: block;
+  width: 100%;
+  background: var(--gold);
+  color: var(--navy-deep);
+  border: none;
+  padding: 15px 20px;
+  min-height: 50px;
+  font-size: 1.05rem;
+}
+#loginBtn:hover{ background: var(--gold-deep); }
+
+#loginChoice{
+  background: var(--paper-alt);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--radius);
+  padding: 22px;
 }
 
-button:hover{
-    background: #0b5ed7;
+#loginChoice h3{
+  margin: 0 0 16px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.02rem;
+  color: var(--navy-deep);
 }
 
+#loginChoice button{
+  display: block;
+  width: 100%;
+  background: transparent;
+  border: 1px solid var(--navy-soft);
+  color: var(--navy-deep);
+  padding: 14px 18px;
+  min-height: 48px;
+}
+#loginChoice button + button{ margin-top: 12px; }
+
+#loginChoice button:hover{
+  background: var(--navy-deep);
+  color: var(--paper);
+  border-color: var(--navy-deep);
+}
+
+/* the Student option reads as the primary path since most visits
+   to this screen are students taking attendance */
+#loginChoice button:first-of-type{
+  background: var(--navy-deep);
+  color: var(--paper);
+  border-color: var(--navy-deep);
+}
+#loginChoice button:first-of-type:hover{
+  background: var(--navy-soft);
+}
+
+/* ===========================================================
+   Footer
+   =========================================================== */
 footer{
-    text-align: center;
-    padding: 20px;
-    color: #666;
-    margin-top: 40px;
+  text-align: center;
+  padding: 18px 20px;
+  padding-bottom: max(18px, env(safe-area-inset-bottom));
+  font-size: .78rem;
+  color: var(--ink-faint);
+  border-top: 1px solid var(--paper-line);
+}
+
+/* ===========================================================
+   Responsive — phones
+   =========================================================== */
+@media (max-width: 480px){
+  header{ padding: 34px 16px 22px; }
+  main{ padding: 24px 16px; }
+  #countdownPopup, #loginChoice{ padding: 18px; }
+  #countdownTimer{ font-size: clamp(1.6rem, 9vw, 2rem); }
+}
+
+@media (max-width: 360px){
+  header h1{ font-size: 1.15rem; }
+  header h2{ font-size: .8rem; }
+  main > p{ font-size: .92rem; }
 }
