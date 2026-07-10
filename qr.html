@@ -185,10 +185,15 @@ shareBtn.addEventListener("click", async () => {
 
   // 1. I-save sa Shared Records — kung mag-fail ni, i-stop gyud kay
   //    kinahanglan gyud successful ni una sa tanan.
+  //    Gi-dugang ang course ug yearLevel (gikan sa attendance doc)
+  //    aron ma-specify/ma-group ang record sunod sa year level sa
+  //    Shared Records page.
   try{
     await addDoc(collection(db, "sharedRecords"), {
       attendanceId: currentAttendance.id,
       name: currentAttendance.name,
+      course: currentAttendance.course || "",
+      yearLevel: currentAttendance.yearLevel || "",
       address: currentAttendance.address,
       timestamp: serverTimestamp()
     });
