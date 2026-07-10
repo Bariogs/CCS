@@ -23,11 +23,13 @@
   <div class="card">
     <p class="eyebrow">Student Dashboard</p>
     <h1 class="page-title" id="greeting">Good Day!</h1>
+    <p class="page-sub" id="courseYearLine" style="display:none;"></p>
     <p class="page-sub">Just click the button below to take attendance for today.</p>
 
     <!-- STEP 0: start -->
     <div id="stepStart" class="attend-flow">
-      <button class="btn gold" id="startBtn">📷 Take Attendance</button>
+      <div id="scheduleMsg" class="msg" style="display:none;"></div>
+      <button class="btn gold" id="startBtn" disabled>Ginacheck ang schedule...</button>
     </div>
 
     <!-- STEP 1: location check -->
@@ -74,7 +76,7 @@
 <script type="module">
 import { db } from "./firebase.js";
 import {
-  collection, addDoc, serverTimestamp
+  collection, addDoc, getDocs, getDoc, doc, query, where, limit, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-firestore.js";
 
 // ---- Auth guard ----
@@ -90,6 +92,93 @@ document.getElementById("logoutBtn").addEventListener("click", () => {
   sessionStorage.clear();
   window.location.href = "login.html";
 });
+
+// ---- I-fetch ang Course ug Year Level sa naka-login nga estudyante ----
+const courseYearLine = document.getElementById("courseYearLine");
+
+async function loadCourseAndYear(){
+  try{
+    const q = query(collection(db, "students"), where("name", "==", displayName), limit(1));
+    const snap = await getDocs(q);
+    if(!snap.empty){
+      const data = snap.docs[0].data();
+      const course = data.course || "—";
+      const yearLevel = data.yearLevel || "—";
+      courseYearLine.textContent = `${course} • ${yearLevel}`;
+      courseYearLine.style.display = "block";
+
+      // I-cache sad sa sessionStorage aron dali ra makuha sa ubang pages kung kinahanglan
+      sessionStorage.setItem("course", course);
+      sessionStorage.setItem("yearLevel", yearLevel);
+    }
+  }catch(err){
+    console.error("Failed to load course/year level:", err);
+  }
+}
+loadCourseAndYear();
+
+// ---- Attendance Schedule check: gina-control sa admin kung kanus-a
+//      available ang "Take Attendance" button ----
+const scheduleMsg = document.getElementById("scheduleMsg");
+let attendanceWindow = null; // { start: Date, end: Date }
+
+function formatWindowDisplay(startDate, endDate){
+  const dateStr = startDate.toLocaleDateString("en-PH", { year: "numeric", month: "long", day: "numeric" });
+  const startStr = startDate.toLocaleTimeString("en-PH", { hour: "numeric", minute: "2-digit" });
+  const endStr = endDate.toLocaleTimeString("en-PH", { hour: "numeric", minute: "2-digit" });
+  return `${dateStr}, ${startStr} – ${endStr}`;
+}
+
+function setStartButtonState(enabled, text){
+  const startBtnEl = document.getElementById("startBtn");
+  startBtnEl.disabled = !enabled;
+  startBtnEl.textContent = text;
+}
+
+function showScheduleMsg(text, ok){
+  scheduleMsg.textContent = text;
+  scheduleMsg.className = ok ? "msg ok show" : "msg error show";
+  scheduleMsg.style.display = "block";
+}
+
+async function checkAttendanceWindow(){
+  try{
+    const snap = await getDoc(doc(db, "settings", "attendanceWindow"));
+    if(!snap.exists()){
+      attendanceWindow = null;
+      showScheduleMsg("Wala pa nagbutang ang admin ug schedule para sa attendance. Paghulat sa announcement.", false);
+      setStartButtonState(false, "Dili pa Available");
+      return;
+    }
+
+    const data = snap.data();
+    const start = data.startAt.toDate();
+    const end = data.endAt.toDate();
+    attendanceWindow = { start, end };
+
+    const now = new Date();
+    if(now < start){
+      showScheduleMsg(`Available pa sa: ${formatWindowDisplay(start, end)}`, false);
+      setStartButtonState(false, "Wala pa Available");
+    } else if(now > end){
+      showScheduleMsg(`Tapos na ang oras sa attendance (${formatWindowDisplay(start, end)}). Paghulat sa sunod nga schedule.`, false);
+      setStartButtonState(false, "Tapos na ang Oras");
+    } else {
+      showScheduleMsg(`Available karon hangtod ${end.toLocaleTimeString("en-PH", { hour: "numeric", minute: "2-digit" })}.`, true);
+      setStartButtonState(true, "📷 Take Attendance");
+    }
+  }catch(err){
+    console.error("Failed to check attendance window:", err);
+    attendanceWindow = null;
+    showScheduleMsg("Wala ma-verify ang schedule. Sulayi pag-refresh sa page.", false);
+    setStartButtonState(false, "Dili Available");
+  }
+}
+
+checkAttendanceWindow();
+// i-recheck matag 30 segundos aron automatic mag-enable/disable
+// bisan wala mag-reload ang estudyante sa page
+setInterval(checkAttendanceWindow, 30000);
 
 // ---- Elements ----
 const stepStart = document.getElementById("stepStart");
@@ -134,6 +223,16 @@ async function reverseGeocode(lat, lng){
 }
 
 startBtn.addEventListener("click", () => {
+  // I-verify pag-usab dinhi (dili lang ang disabled attribute) aron dili
+  // ma-bypass ang restriction pinaagi sa pag-enable sa button gamit ang
+  // browser dev tools.
+  const now = new Date();
+  if(!attendanceWindow || now < attendanceWindow.start || now > attendanceWindow.end){
+    alert("Dili pa available ang pag-take sa attendance karon.");
+    checkAttendanceWindow();
+    return;
+  }
+
   showStep(stepLocation);
   locDot.className = "status-dot";
   locText.textContent = "Getting location...";
@@ -251,13 +350,30 @@ retakeBtn.addEventListener("click", async () => {
 
 // ---- Step 3: submit ----
 submitBtn.addEventListener("click", async () => {
+  // I-verify pag-usab ang schedule sa dili pa i-submit, kay basin
+  // naglabay na ang oras samtang nagkuha pa sa location/litrato.
+  const nowCheck = new Date();
+  if(!attendanceWindow || nowCheck < attendanceWindow.start || nowCheck > attendanceWindow.end){
+    alert("Tapos na o wala pa available ang oras sa attendance. Dili ma-submit ang imong attendance.");
+    stopCamera();
+    showStep(stepStart);
+    checkAttendanceWindow();
+    return;
+  }
+
   submitBtn.disabled = true;
   submitBtn.innerHTML = '<span class="spinner"></span>';
 
   try{
+    // I-apil ang course/year level (kung naa na sa sessionStorage) sa attendance record
+    const course = sessionStorage.getItem("course") || "";
+    const yearLevel = sessionStorage.getItem("yearLevel") || "";
+
     // 1. Save attendance record
     const attendanceRef = await addDoc(collection(db, "attendance"), {
       name: displayName,
+      course,
+      yearLevel,
       photo: capturedDataUrl,
       address: locationData.address,
       lat: locationData.lat,
@@ -290,6 +406,8 @@ submitBtn.addEventListener("click", async () => {
     await addDoc(collection(db, "qr"), {
       attendanceId: attendanceRef.id,
       name: displayName,
+      course,
+      yearLevel,
       qrImage: qrDataUrl,
       timestamp: serverTimestamp()
     });

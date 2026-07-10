@@ -32,7 +32,38 @@
     </div>
   </div>
 
-  <div class="card">
+  <div class="card" style="margin-bottom:24px;">
+    <p class="eyebrow">Attendance Schedule</p>
+    <h2 style="margin:0 0 4px; color:var(--navy-deep);">I-set ang Petsa ug Oras sa Attendance</h2>
+    <p class="page-sub">
+      Makahimo lang mag-take attendance ang mga estudyante sulod sa gipili
+      nga petsa ug oras. Sa gawas niini, dili maka-access ang "Take
+      Attendance" button hangtod mag-set na usab ang admin og bag-ong schedule.
+    </p>
+
+    <div id="windowMsg" class="msg"></div>
+    <div id="currentWindowInfo" class="msg" style="display:none;"></div>
+
+    <form id="windowForm" style="max-width:420px;">
+      <div class="field">
+        <label for="attDate">Petsa</label>
+        <input type="date" id="attDate" required>
+      </div>
+      <div style="display:flex; gap:12px;">
+        <div class="field" style="flex:1;">
+          <label for="attStart">Start Time</label>
+          <input type="time" id="attStart" required>
+        </div>
+        <div class="field" style="flex:1;">
+          <label for="attEnd">End Time</label>
+          <input type="time" id="attEnd" required>
+        </div>
+      </div>
+      <button type="submit" class="btn gold" id="saveWindowBtn">I-save ang Schedule</button>
+    </form>
+  </div>
+
+  <div class="card" style="margin-bottom:24px;">
     <p class="eyebrow">Student Accounts</p>
     <h2 style="margin:0 0 4px; color:var(--navy-deep);">Pagdugang og Estudyante</h2>
     <p class="page-sub">Ang ngalan mao ang username, ug ang School ID mao ang password sa estudyante kung mag-login.</p>
@@ -48,14 +79,51 @@
         <label for="sId">School ID</label>
         <input type="text" id="sId" required placeholder="e.g. COL-00789">
       </div>
+      <div class="field">
+        <label for="sCourse">Course</label>
+        <input type="text" id="sCourse" required placeholder="e.g. BS Computer Science">
+      </div>
+      <div class="field">
+        <label for="sYearLevel">Year Level</label>
+        <select id="sYearLevel" required>
+          <option value="" disabled selected>Pilia ang Year Level</option>
+          <option value="1st Year">1st Year</option>
+          <option value="2nd Year">2nd Year</option>
+          <option value="3rd Year">3rd Year</option>
+          <option value="4th Year">4th Year</option>
+          <option value="5th Year">5th Year</option>
+        </select>
+      </div>
       <button type="submit" class="btn gold" id="addBtn">Dugangi</button>
     </form>
 
     <table class="records" id="studentsTable" style="display:none; margin-top:26px;">
-      <thead><tr><th>#</th><th>Ngalan</th><th>School ID</th></tr></thead>
+      <thead><tr><th>#</th><th>Ngalan</th><th>School ID</th><th>Course</th><th>Year Level</th><th>Aksyon</th></tr></thead>
       <tbody id="studentsBody"></tbody>
     </table>
     <div id="emptyState" class="empty" style="display:none;">Wala pay na-rehistro nga estudyante.</div>
+  </div>
+
+  <div class="card">
+    <p class="eyebrow">Storage Cleanup</p>
+    <h2 style="margin:0 0 4px; color:var(--navy-deep);">Tangtangon ang Daan nga Records</h2>
+    <p class="page-sub">
+      Kini nga action <b>permanente ug walay undo</b>. Tangtangon ang tanang
+      attendance record (uban sa litrato) nga sobra na sa gipili nga
+      kadaghan ka adlaw ang tigulang — apil ang mga may kalabutan nga
+      QR code ug Shared Records. Gamiton kini para dili maabot ang
+      1&nbsp;GB storage limit sa Firebase Spark plan.
+    </p>
+
+    <div id="cleanupMsg" class="msg"></div>
+
+    <div style="display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap;">
+      <div class="field" style="max-width:200px; margin-bottom:0;">
+        <label for="cleanupDays">Tangtangon kung sobra sa (adlaw)</label>
+        <input type="number" id="cleanupDays" min="1" value="1">
+      </div>
+      <button type="button" class="btn outline" id="cleanupBtn">Clear old records</button>
+    </div>
   </div>
 
 </div>
@@ -63,8 +131,15 @@
 <script type="module">
 import { db } from "./firebase.js";
 import {
-  collection, addDoc, getDocs, query, orderBy
+  collection, addDoc, getDocs, getDoc, setDoc, query, orderBy, where, deleteDoc, doc, Timestamp, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-firestore.js";
+
+// gamiton para i-check kung naay dobleng username sa pagdugang og estudyante
+async function nameExists(name){
+  const q = query(collection(db, "students"), where("name", "==", name));
+  const snap = await getDocs(q);
+  return !snap.empty;
+}
 
 // ---- Auth guard ----
 const role = sessionStorage.getItem("role");
@@ -97,24 +172,72 @@ async function loadStudents(){
   snap.forEach(docSnap => {
     const data = docSnap.data();
     const tr = document.createElement("tr");
-    tr.innerHTML = `<td>${i}</td><td>${data.name}</td><td>${data.schoolId}</td>`;
+    tr.innerHTML = `
+      <td>${i}</td>
+      <td>${data.name}</td>
+      <td>${data.schoolId}</td>
+      <td>${data.course || "—"}</td>
+      <td>${data.yearLevel || "—"}</td>
+      <td><button type="button" class="btn outline deleteStudentBtn" data-id="${docSnap.id}" data-name="${data.name}">Delete</button></td>
+    `;
     studentsBody.appendChild(tr);
     i++;
   });
 }
 
+// ---- Pagtangtang og estudyante (delete gikan sa database) ----
+studentsBody.addEventListener("click", async (e) => {
+  const btn = e.target.closest(".deleteStudentBtn");
+  if(!btn) return;
+
+  const studentId = btn.dataset.id;
+  const studentName = btn.dataset.name;
+
+  const confirmed = window.confirm(
+    `Sigurado ka nga gusto nimo tangtangon si ${studentName}? Dili na ni ma-undo, ug matangtang gyud siya sa database.`
+  );
+  if(!confirmed) return;
+
+  btn.disabled = true;
+  btn.textContent = "...";
+
+  try{
+    await deleteDoc(doc(db, "students", studentId));
+    addMsg.textContent = `Natangtang si ${studentName}.`;
+    addMsg.className = "msg ok show";
+    loadStudents();
+  }catch(err){
+    console.error(err);
+    addMsg.textContent = `Naay problema sa pagtangtang kang ${studentName}.`;
+    addMsg.className = "msg error show";
+    btn.disabled = false;
+    btn.textContent = "Delete";
+  }
+});
+
 document.getElementById("addStudentForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   const name = document.getElementById("sName").value.trim();
   const schoolId = document.getElementById("sId").value.trim();
-  if(!name || !schoolId) return;
+  const course = document.getElementById("sCourse").value.trim();
+  const yearLevel = document.getElementById("sYearLevel").value;
+  if(!name || !schoolId || !course || !yearLevel) return;
 
   addBtn.disabled = true;
   addBtn.innerHTML = '<span class="spinner"></span>';
   addMsg.className = "msg";
 
   try{
-    await addDoc(collection(db, "students"), { name, schoolId });
+    // I-check una kung naa nay naka-rehistro nga parehas nga ngalan/username
+    if(await nameExists(name)){
+      addMsg.textContent = `Naa nay estudyante nga naka-rehistro sa ngalan nga "${name}". Gamit og lahi nga ngalan o tangtanga una ang daan.`;
+      addMsg.className = "msg error show";
+      addBtn.disabled = false;
+      addBtn.textContent = "Dugangi";
+      return;
+    }
+
+    await addDoc(collection(db, "students"), { name, schoolId, course, yearLevel });
     addMsg.textContent = `Nadugang si ${name}.`;
     addMsg.className = "msg ok show";
     document.getElementById("addStudentForm").reset();
@@ -130,6 +253,166 @@ document.getElementById("addStudentForm").addEventListener("submit", async (e) =
 });
 
 loadStudents();
+
+// ---- Attendance Schedule: gina-set sa admin kung kanus-a available ang "Take Attendance" ----
+const windowForm = document.getElementById("windowForm");
+const attDate = document.getElementById("attDate");
+const attStart = document.getElementById("attStart");
+const attEnd = document.getElementById("attEnd");
+const windowMsg = document.getElementById("windowMsg");
+const currentWindowInfo = document.getElementById("currentWindowInfo");
+const saveWindowBtn = document.getElementById("saveWindowBtn");
+
+function formatWindowDisplay(startDate, endDate){
+  const dateStr = startDate.toLocaleDateString("en-PH", { year: "numeric", month: "long", day: "numeric" });
+  const startStr = startDate.toLocaleTimeString("en-PH", { hour: "numeric", minute: "2-digit" });
+  const endStr = endDate.toLocaleTimeString("en-PH", { hour: "numeric", minute: "2-digit" });
+  return `${dateStr}, ${startStr} – ${endStr}`;
+}
+
+async function loadCurrentWindow(){
+  try{
+    const snap = await getDoc(doc(db, "settings", "attendanceWindow"));
+    if(snap.exists()){
+      const data = snap.data();
+      const startDate = data.startAt.toDate();
+      const endDate = data.endAt.toDate();
+
+      currentWindowInfo.textContent = `Kasamtangang schedule: ${formatWindowDisplay(startDate, endDate)}`;
+      currentWindowInfo.className = "msg ok show";
+      currentWindowInfo.style.display = "block";
+
+      // i-prefill ang form base sa current setting para dali ra i-edit
+      const pad = n => String(n).padStart(2, "0");
+      attDate.value = `${startDate.getFullYear()}-${pad(startDate.getMonth() + 1)}-${pad(startDate.getDate())}`;
+      attStart.value = `${pad(startDate.getHours())}:${pad(startDate.getMinutes())}`;
+      attEnd.value = `${pad(endDate.getHours())}:${pad(endDate.getMinutes())}`;
+    } else {
+      currentWindowInfo.style.display = "none";
+    }
+  }catch(err){
+    console.error("Failed to load attendance window:", err);
+  }
+}
+loadCurrentWindow();
+
+windowForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const dateVal = attDate.value;
+  const startVal = attStart.value;
+  const endVal = attEnd.value;
+  if(!dateVal || !startVal || !endVal) return;
+
+  const startDate = new Date(`${dateVal}T${startVal}:00`);
+  const endDate = new Date(`${dateVal}T${endVal}:00`);
+
+  if(endDate <= startDate){
+    windowMsg.className = "msg error show";
+    windowMsg.textContent = "Ang End Time kinahanglan mas ulahi sa Start Time.";
+    return;
+  }
+
+  saveWindowBtn.disabled = true;
+  saveWindowBtn.innerHTML = '<span class="spinner"></span>';
+  windowMsg.className = "msg";
+  windowMsg.textContent = "";
+
+  try{
+    await setDoc(doc(db, "settings", "attendanceWindow"), {
+      startAt: Timestamp.fromDate(startDate),
+      endAt: Timestamp.fromDate(endDate),
+      updatedAt: serverTimestamp()
+    });
+    windowMsg.textContent = `Na-set na ang schedule: ${formatWindowDisplay(startDate, endDate)}`;
+    windowMsg.className = "msg ok show";
+    loadCurrentWindow();
+  }catch(err){
+    console.error(err);
+    windowMsg.className = "msg error show";
+    windowMsg.textContent = "Naay problema sa pag-set sa schedule.";
+  }finally{
+    saveWindowBtn.disabled = false;
+    saveWindowBtn.textContent = "I-save ang Schedule";
+  }
+});
+const cleanupBtn = document.getElementById("cleanupBtn");
+const cleanupDaysInput = document.getElementById("cleanupDays");
+const cleanupMsg = document.getElementById("cleanupMsg");
+
+cleanupBtn.addEventListener("click", async () => {
+  const days = parseInt(cleanupDaysInput.value, 10);
+  if(!days || days < 1){
+    cleanupMsg.className = "msg error show";
+    cleanupMsg.textContent = "Palihug pilit og balido nga gidaghanon sa adlaw.";
+    return;
+  }
+
+  const confirmed = window.confirm(
+    `Sigurado ka nga gusto nimo permanente nga tangtangon ang tanang records nga sobra sa ${days} ka adlaw ang tigulang? Dili na ni ma-undo.`
+  );
+  if(!confirmed) return;
+
+  cleanupBtn.disabled = true;
+  cleanupBtn.innerHTML = '<span class="spinner"></span>';
+  cleanupMsg.className = "msg";
+  cleanupMsg.textContent = "";
+
+  try{
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - days);
+    const cutoffTs = Timestamp.fromDate(cutoff);
+
+    // 1. Kuhaon ang tanang daan nga attendance records
+    const attQ = query(collection(db, "attendance"), where("timestamp", "<", cutoffTs));
+    const attSnap = await getDocs(attQ);
+
+    if(attSnap.empty){
+      cleanupMsg.textContent = "Walay records nga sobra na sa gipili nga kadaghan ka adlaw.";
+      cleanupMsg.className = "msg ok show";
+      return;
+    }
+
+    const oldAttendanceIds = new Set();
+    attSnap.forEach(d => oldAttendanceIds.add(d.id));
+
+    // 2. Pangitaon ug tangtangon ang mga QR record nga naka-link sa old attendance
+    const qrSnap = await getDocs(collection(db, "qr"));
+    const qrDeletes = [];
+    qrSnap.forEach(d => {
+      const data = d.data();
+      if(oldAttendanceIds.has(data.attendanceId)){
+        qrDeletes.push(deleteDoc(doc(db, "qr", d.id)));
+      }
+    });
+
+    // 3. Pangitaon ug tangtangon ang mga Shared Record nga naka-link sa old attendance
+    const sharedSnap = await getDocs(collection(db, "sharedRecords"));
+    const sharedDeletes = [];
+    sharedSnap.forEach(d => {
+      const data = d.data();
+      if(oldAttendanceIds.has(data.attendanceId)){
+        sharedDeletes.push(deleteDoc(doc(db, "sharedRecords", d.id)));
+      }
+    });
+
+    // 4. Tangtangon ang attendance records mismo (naa diri ang mga litrato)
+    const attDeletes = [];
+    attSnap.forEach(d => attDeletes.push(deleteDoc(doc(db, "attendance", d.id))));
+
+    await Promise.all([...qrDeletes, ...sharedDeletes, ...attDeletes]);
+
+    cleanupMsg.textContent =
+      `Natangtang ang ${attDeletes.length} ka attendance record (uban sa ${qrDeletes.length} ka QR ug ${sharedDeletes.length} ka shared record nga may kalabutan).`;
+    cleanupMsg.className = "msg ok show";
+  }catch(err){
+    console.error(err);
+    cleanupMsg.className = "msg error show";
+    cleanupMsg.textContent = "Naay problema sa pagtangtang sa mga daan nga record. Tan-awa ang console para sa detalye.";
+  }finally{
+    cleanupBtn.disabled = false;
+    cleanupBtn.textContent = "Clear old records";
+  }
+});
 </script>
 </body>
 </html>
