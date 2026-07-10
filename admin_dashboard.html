@@ -103,6 +103,8 @@
         <tbody id="studentsBody"></tbody>
       </table>
     </div>
+    <div id="studentsCountInfo" class="page-sub" style="display:none; margin-top:10px; margin-bottom:0;"></div>
+    <button type="button" class="btn outline" id="seeMoreBtn" style="display:none; margin-top:14px;">See more</button>
     <div id="emptyState" class="empty" style="display:none;">No students registered yet.</div>
   </div>
 
@@ -157,34 +159,82 @@ const addMsg = document.getElementById("addMsg");
 const addBtn = document.getElementById("addBtn");
 const studentsTableWrap = document.getElementById("studentsTableWrap");
 const studentsBody = document.getElementById("studentsBody");
+const studentsCountInfo = document.getElementById("studentsCountInfo");
+const seeMoreBtn = document.getElementById("seeMoreBtn");
 const emptyState = document.getElementById("emptyState");
 
-async function loadStudents(){
+// ---- Pagination state for the student roster ----
+// We keep every student in memory (allStudents) and only render
+// the first `visibleCount` rows. "See more" reveals another page
+// without needing to re-query Firestore.
+const PAGE_SIZE = 10;
+let allStudents = [];
+let visibleCount = PAGE_SIZE;
+
+function renderStudentRow(docId, data, index){
+  const tr = document.createElement("tr");
+  tr.innerHTML = `
+    <td>${index}</td>
+    <td>${data.name}</td>
+    <td>${data.schoolId}</td>
+    <td>${data.course || "—"}</td>
+    <td>${data.yearLevel || "—"}</td>
+    <td><button type="button" class="btn outline deleteStudentBtn" data-id="${docId}" data-name="${data.name}">Delete</button></td>
+  `;
+  return tr;
+}
+
+function renderVisibleStudents(){
   studentsBody.innerHTML = "";
+  const slice = allStudents.slice(0, visibleCount);
+  slice.forEach((s, idx) => {
+    studentsBody.appendChild(renderStudentRow(s.id, s.data, idx + 1));
+  });
+
+  const total = allStudents.length;
+  const shown = slice.length;
+
+  if(total > PAGE_SIZE){
+    studentsCountInfo.textContent = `Showing ${shown} of ${total} student(s).`;
+    studentsCountInfo.style.display = "block";
+  } else {
+    studentsCountInfo.style.display = "none";
+  }
+
+  // only show "See more" while there are still hidden rows left
+  seeMoreBtn.style.display = shown < total ? "inline-flex" : "none";
+}
+
+seeMoreBtn.addEventListener("click", () => {
+  visibleCount += PAGE_SIZE;
+  renderVisibleStudents();
+});
+
+async function loadStudents(){
   const q = query(collection(db, "students"), orderBy("name"));
   const snap = await getDocs(q);
+
   if(snap.empty){
+    allStudents = [];
     emptyState.style.display = "block";
     studentsTableWrap.style.display = "none";
+    studentsCountInfo.style.display = "none";
+    seeMoreBtn.style.display = "none";
     return;
   }
+
   emptyState.style.display = "none";
   studentsTableWrap.style.display = "block";
-  let i = 1;
+
+  allStudents = [];
   snap.forEach(docSnap => {
-    const data = docSnap.data();
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${i}</td>
-      <td>${data.name}</td>
-      <td>${data.schoolId}</td>
-      <td>${data.course || "—"}</td>
-      <td>${data.yearLevel || "—"}</td>
-      <td><button type="button" class="btn outline deleteStudentBtn" data-id="${docSnap.id}" data-name="${data.name}">Delete</button></td>
-    `;
-    studentsBody.appendChild(tr);
-    i++;
+    allStudents.push({ id: docSnap.id, data: docSnap.data() });
   });
+
+  // reset back to the first page whenever the roster is (re)loaded,
+  // e.g. right after adding or deleting a student
+  visibleCount = PAGE_SIZE;
+  renderVisibleStudents();
 }
 
 // ---- Deleting a student (delete from the database) ----

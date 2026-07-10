@@ -518,3 +518,447 @@ input, select{ font-size: 16px; }
     max-width: none !important;
   }
 }
+
+/* ===========================================================
+   Student roster pagination — "See more"
+   =========================================================== */
+#studentsCountInfo{
+  font-size: .82rem;
+  color: var(--ink-faint);
+}
+
+#seeMoreBtn{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+/* a small downward chevron hints there's more to reveal below */
+#seeMoreBtn::after{
+  content: "▾";
+  font-size: .8em;
+}
+
+@media (max-width: 480px){
+  #seeMoreBtn{ width: 100%; }
+}
+
+/* ===========================================================
+   Login screen — the "ID scanner" doorway
+   Reuses .card, .eyebrow, .page-title, .field, .msg, .btn, .spinner
+   from above; this section only adds what's specific to logging in.
+   =========================================================== */
+
+/* full-viewport centering stage; keeps the same paper/scan-console
+   background as the rest of the app so it reads as one system */
+.center-screen{
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  padding-top: max(24px, env(safe-area-inset-top));
+  padding-bottom: max(24px, env(safe-area-inset-bottom));
+  padding-left: max(16px, env(safe-area-inset-left));
+  padding-right: max(16px, env(safe-area-inset-right));
+}
+
+/* the login card gets a touch more lift than an inline dashboard card,
+   since it's the only thing on the screen */
+.center-screen .card{
+  box-shadow: 0 4px 10px rgba(14,26,51,.06), 0 24px 48px -24px rgba(14,26,51,.45);
+}
+
+/* full-width primary button for single-column forms like this one */
+.btn.block{
+  display: flex;
+  width: 100%;
+  margin-top: 4px;
+}
+
+/* School ID acts like a keycard number: monospace + letter-spacing
+   makes it read as an ID rather than a generic secret */
+#password{
+  font-family: "SFMono-Regular", ui-monospace, Menlo, Consolas, monospace;
+  letter-spacing: .04em;
+}
+
+/* wrong-credentials feedback gets a brief, contained shake so the
+   error registers without feeling alarming */
+.msg.error.show{
+  animation: msg-shake .32s var(--ease);
+}
+@keyframes msg-shake{
+  0%, 100% { transform: translateX(0); }
+  25%      { transform: translateX(-4px); }
+  75%      { transform: translateX(4px); }
+}
+@media (prefers-reduced-motion: reduce){
+  .msg.error.show{ animation: none; }
+}
+
+/* on very short phone screens (landscape, or small devices with the
+   keyboard up) let the card scroll instead of clipping the button */
+@media (max-height: 560px){
+  .center-screen{
+    align-items: flex-start;
+    padding-top: max(16px, env(safe-area-inset-top));
+  }
+}
+
+/* ===========================================================
+   Student attendance flow — "check-in counter" moment
+   Reuses .card, .eyebrow, .page-title, .msg, .btn, .spinner.
+   This section styles the step-by-step flow: schedule → location →
+   camera → preview → QR success.
+   =========================================================== */
+
+.attend-flow{ margin-top: 18px; }
+
+/* schedule-check button starts as a quiet "checking" state, then
+   becomes the primary gold action once the window is confirmed open */
+#startBtn{ width: 100%; }
+
+/* ---- status line (used for both location + camera-address rows) ---- */
+.status-line{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: .95rem;
+  color: var(--ink-soft);
+  margin-bottom: 12px;
+}
+
+.status-dot{
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--ink-faint);
+  flex-shrink: 0;
+  position: relative;
+}
+/* "checking" pulse while we wait on GPS/camera permission */
+.status-dot:not(.on):not(.off){
+  animation: status-check 1.1s var(--ease) infinite;
+}
+@keyframes status-check{
+  0%, 100% { opacity: .5; }
+  50%      { opacity: 1; }
+}
+.status-dot.on{
+  background: var(--ok);
+  box-shadow: 0 0 0 4px var(--ok-bg);
+}
+.status-dot.off{
+  background: var(--err);
+  box-shadow: 0 0 0 4px var(--err-bg);
+}
+@media (prefers-reduced-motion: reduce){
+  .status-dot:not(.on):not(.off){ animation: none; opacity: .8; }
+}
+
+#addressText{
+  font-size: .88rem;
+  color: var(--ink-soft);
+  overflow-wrap: anywhere; /* long reverse-geocoded addresses wrap instead of overflowing on phones */
+}
+
+/* ---- camera viewfinder ---- */
+/* fixed aspect-ratio box avoids layout jump while the camera stream
+   loads, and keeps things framed like an ID-scan viewfinder */
+#video{
+  display: block;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  border-radius: var(--radius);
+  border: 2px solid var(--gold);
+  background: var(--navy-deep);
+  margin: 4px 0 16px;
+  /* mirror the live preview so it behaves like a mirror, the way a
+     front camera is expected to — the captured frame underneath is
+     read from the raw (unmirrored) stream, so the submitted photo
+     stays true-to-life for verification */
+  transform: scaleX(-1);
+}
+
+/* the captured photo: shown un-mirrored on purpose, since this is
+   what actually gets submitted and should read naturally */
+.preview{
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: var(--radius);
+  border: 2px solid var(--paper-line);
+  background: var(--paper);
+  margin: 4px 0;
+}
+
+#stepCamera .btn,
+#stepPreview .btn{
+  margin: 6px 6px 0 0;
+}
+
+/* ---- success step / QR receipt ---- */
+#stepDone{ text-align: center; }
+
+#qrHolder{
+  position: relative;
+  padding: 16px;
+  background: var(--paper);
+  border: 1px dashed var(--paper-line);
+  border-radius: var(--radius);
+}
+#qrHolder img{
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+/* ===========================================================
+   Android / phone-specific adjustments for the attendance flow
+   =========================================================== */
+@media (max-width: 480px){
+  /* on a narrow phone, taller portrait framing fits a face better
+     than the desktop 3:4 box and keeps the whole card on screen */
+  #video{ aspect-ratio: 3 / 4.6; }
+
+  #stepCamera .btn,
+  #stepPreview .btn{
+    display: block;
+    width: 100%;
+    margin: 8px 0 0;
+  }
+
+  .status-line{ font-size: .9rem; }
+}
+
+/* very short viewports (keyboard up, or landscape on a phone) —
+   shrink the viewfinder so the capture button stays reachable
+   without scrolling */
+@media (max-height: 640px) and (max-width: 480px){
+  #video{ aspect-ratio: 4 / 3; }
+}
+
+/* Android Chrome sometimes reports a slightly different safe video
+   area on notauched devices; keep the viewfinder from ever exceeding
+   the viewport height so the Capture button is always visible */
+#video{ max-height: 60vh; max-height: 60dvh; }
+
+/* ===========================================================
+   Shared Records — the exportable ledger view
+   Reuses .card, .btn.gold, .records table, .empty from above.
+   =========================================================== */
+
+/* breathing room between the intro text, the download action,
+   and the table itself */
+#downloadBtn{ margin-bottom: 20px; }
+
+/* Address and Date & Time can both be long strings (full reverse-
+   geocoded addresses, full locale date strings) — let them wrap
+   inside their own cell instead of stretching the table or
+   forcing sideways scroll on a phone screen. */
+#recordsTable td:nth-child(2),
+#recordsTable td:nth-child(3),
+#recordsTable td:nth-child(4){
+  overflow-wrap: anywhere;
+  max-width: 220px;
+}
+
+@media (max-width: 480px){
+  #downloadBtn{
+    width: 100%;
+    margin-bottom: 18px;
+  }
+  #recordsTable td:nth-child(2),
+  #recordsTable td:nth-child(3),
+  #recordsTable td:nth-child(4){
+    max-width: 140px;
+  }
+}
+
+/* ===========================================================
+   QR Codes gallery — the "ticket wall"
+   Reuses .card, .eyebrow, .page-title, .empty, .btn, .msg, .spinner.
+   =========================================================== */
+
+.grid{
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 14px;
+  margin-top: 8px;
+}
+
+.qr-tile{
+  position: relative;
+  background: var(--paper);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--radius-sm);
+  padding: 14px 12px 12px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color .15s var(--ease), transform .12s var(--ease), box-shadow .15s var(--ease);
+}
+.qr-tile:hover{
+  border-color: var(--gold);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px -14px rgba(14,26,51,.35);
+}
+.qr-tile:active{ transform: translateY(0); }
+
+/* QR images need a clean white field around the code to stay
+   scannable, regardless of the parchment tones around them */
+.qr-tile img{
+  display: block;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: contain;
+  background: #fff;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--paper-line);
+  padding: 8px;
+  margin-bottom: 10px;
+}
+
+.qr-tile .name{
+  font-weight: 600;
+  font-size: .88rem;
+  color: var(--navy-deep);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.qr-tile .time{
+  font-size: .74rem;
+  color: var(--ink-faint);
+  margin-top: 2px;
+}
+
+/* ---- Detail modal ---- */
+.modal-bg{
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(14,26,51,.55);
+  backdrop-filter: blur(2px);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity .18s var(--ease), visibility .18s var(--ease);
+}
+.modal-bg.show{
+  opacity: 1;
+  visibility: visible;
+}
+
+.modal{
+  position: relative;
+  width: 100%;
+  max-width: 380px;
+  background: var(--paper-alt);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--radius);
+  padding: 26px 22px 22px;
+  box-shadow: 0 24px 60px -20px rgba(14,26,51,.5);
+  transform: translateY(10px) scale(.98);
+  transition: transform .18s var(--ease);
+}
+.modal-bg.show .modal{ transform: translateY(0) scale(1); }
+@media (prefers-reduced-motion: reduce){
+  .modal-bg, .modal{ transition: none; }
+}
+
+.close{
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 36px;
+  height: 36px;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--ink-faint);
+  font-size: 1.1rem;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background .15s var(--ease), color .15s var(--ease);
+}
+.close:hover{
+  background: var(--paper-line);
+  color: var(--navy-deep);
+}
+
+#modalName{
+  display: block;
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  color: var(--navy-deep);
+  margin: 2px 0 10px;
+}
+
+.row{
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: .9rem;
+  color: var(--ink-soft);
+  line-height: 1.5;
+  margin-bottom: 6px;
+  overflow-wrap: anywhere;
+}
+
+/* ===========================================================
+   Android / phone adjustments — QR gallery + modal
+   =========================================================== */
+@media (max-width: 480px){
+  .grid{
+    grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
+    gap: 10px;
+  }
+  .qr-tile{ padding: 10px 8px 10px; }
+
+  /* the modal becomes a bottom sheet: easier to reach one-handed,
+     and avoids the awkward floating-center-card feel on a phone */
+  .modal-bg{
+    align-items: flex-end;
+    padding: 0;
+  }
+  .modal{
+    max-width: none;
+    width: 100%;
+    max-height: 88vh;
+    max-height: 88dvh;
+    border-radius: 18px 18px 0 0;
+    padding: 22px 18px max(18px, env(safe-area-inset-bottom));
+    transform: translateY(100%);
+  }
+  .modal-bg.show .modal{ transform: translateY(0); }
+
+  /* a small grab-handle affordance, purely visual, hints this
+     sheet can be dismissed like a native bottom sheet */
+  .modal::before{
+    content: "";
+    position: absolute;
+    top: 8px;
+    left: 50%;
+    width: 36px;
+    height: 4px;
+    border-radius: 999px;
+    background: var(--paper-line);
+    transform: translateX(-50%);
+  }
+
+  .close{
+    top: 14px;
+    width: 40px;
+    height: 40px;
+  }
+}
