@@ -7,6 +7,24 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
+<style>
+  /* Gipa-consistent ang gidak-on sa litrato sa modal para dili matago
+     ang Share button bisan unsa pa kadaghan/kagamay ang orig nga photo. */
+  .modal{
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+  #modalPhoto.photo{
+    display: block;
+    width: 100%;
+    max-width: 280px;
+    height: 220px;
+    object-fit: cover;
+    border-radius: 10px;
+    margin: 12px auto;
+    background: #eee;
+  }
+</style>
 </head>
 <body>
 
@@ -51,7 +69,7 @@
 <script type="module">
 import { db } from "./firebase.js";
 import {
-  collection, getDocs, doc, getDoc, addDoc, serverTimestamp, orderBy, query
+  collection, getDocs, doc, getDoc, deleteDoc, addDoc, serverTimestamp, orderBy, query
 } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-firestore.js";
 
 // ---- Auth guard ----
@@ -75,7 +93,12 @@ function formatTime(ts){
   return ts.toDate().toLocaleString();
 }
 
+function checkEmpty(){
+  emptyState.style.display = grid.children.length === 0 ? "block" : "none";
+}
+
 async function loadQRs(){
+  grid.innerHTML = "";
   const q = query(collection(db, "qr"), orderBy("timestamp", "desc"));
   const snap = await getDocs(q);
 
@@ -84,16 +107,18 @@ async function loadQRs(){
     return;
   }
 
+  emptyState.style.display = "none";
   snap.forEach(docSnap => {
     const data = docSnap.data();
     const tile = document.createElement("div");
     tile.className = "qr-tile";
+    tile.dataset.qrId = docSnap.id;
     tile.innerHTML = `
       <img src="${data.qrImage}" alt="QR code">
       <div class="name">${data.name}</div>
       <div class="time">${formatTime(data.timestamp)}</div>
     `;
-    tile.addEventListener("click", () => openModal(data.attendanceId));
+    tile.addEventListener("click", () => openModal(data.attendanceId, docSnap.id, tile));
     grid.appendChild(tile);
   });
 }
@@ -110,12 +135,21 @@ const shareBtn = document.getElementById("shareBtn");
 const shareMsg = document.getElementById("shareMsg");
 
 let currentAttendance = null;
+let currentQrId = null;
+let currentTile = null;
 
-async function openModal(attendanceId){
+async function openModal(attendanceId, qrId, tileEl){
+  currentQrId = qrId;
+  currentTile = tileEl;
+
   modalBg.classList.add("show");
   modalLoading.style.display = "block";
   modalContent.style.display = "none";
+  shareBtn.style.display = "inline-block";
+  shareBtn.disabled = false;
+  shareBtn.textContent = "Share";
   shareMsg.className = "msg ok";
+  shareMsg.textContent = "";
 
   const snap = await getDoc(doc(db, "attendance", attendanceId));
   if(snap.exists()){
@@ -132,31 +166,50 @@ async function openModal(attendanceId){
   }
 }
 
-document.getElementById("closeModal").addEventListener("click", () => {
+function closeModal(){
   modalBg.classList.remove("show");
-});
+  currentAttendance = null;
+  currentQrId = null;
+  currentTile = null;
+}
+
+document.getElementById("closeModal").addEventListener("click", closeModal);
 modalBg.addEventListener("click", (e) => {
-  if(e.target === modalBg) modalBg.classList.remove("show");
+  if(e.target === modalBg) closeModal();
 });
 
 shareBtn.addEventListener("click", async () => {
-  if(!currentAttendance) return;
+  if(!currentAttendance || !currentQrId) return;
   shareBtn.disabled = true;
   shareBtn.innerHTML = '<span class="spinner"></span>';
   try{
+    // 1. I-save sa Shared Records
     await addDoc(collection(db, "sharedRecords"), {
       attendanceId: currentAttendance.id,
       name: currentAttendance.name,
       address: currentAttendance.address,
       timestamp: serverTimestamp()
     });
+
+    // 2. Tangtangon ang QR record aron mawala na sa listahan/qr.html
+    await deleteDoc(doc(db, "qr", currentQrId));
+
     shareMsg.textContent = "Shared! You can view it in the Shared Records.";
     shareMsg.classList.add("show");
+    shareBtn.style.display = "none";
+
+    // 3. Tangtangon dayon ang tile gikan sa grid, dayon isira ang modal
+    if(currentTile){
+      currentTile.remove();
+      checkEmpty();
+    }
+    setTimeout(() => {
+      closeModal();
+    }, 900);
   }catch(err){
     console.error(err);
     shareMsg.className = "msg error show";
     shareMsg.textContent = "There was an issue sharing the record.";
-  }finally{
     shareBtn.disabled = false;
     shareBtn.textContent = "Share";
   }
