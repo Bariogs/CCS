@@ -194,18 +194,51 @@ cancelBtn.addEventListener("click", () => {
   showStep(stepStart);
 });
 
-captureBtn.addEventListener("click", () => {
-  // resize down for reasonable Firestore document size
-  const targetW = 480;
-  const targetH = video.videoHeight / video.videoWidth * targetW || 360;
-  canvas.width = targetW;
-  canvas.height = targetH;
-  const ctx = canvas.getContext("2d");
-  ctx.drawImage(video, 0, 0, targetW, targetH);
-  capturedDataUrl = canvas.toDataURL("image/jpeg", 0.6);
+// Ang Firestore document kay naay 1 MiB (1,048,576 bytes) nga limit.
+// I-target nato ang ~150 KB nga JPEG para dunay dako nga buffer,
+// ug automatic mo-gamay/mo-ubos ug quality kung kinahanglan.
+const MAX_BYTES = 150 * 1024; // ~150 KB target nga file size sa litrato
+const MIN_WIDTH = 160;        // dili na mo-adto ubos pani
 
-  photoPreview.width = targetW;
-  photoPreview.height = targetH;
+function dataUrlSizeBytes(dataUrl){
+  const base64 = dataUrl.split(",")[1] || "";
+  return Math.ceil(base64.length * 0.75);
+}
+
+function compressFromVideo(){
+  let width = 400; // sugod nga resolution (gamay na kaysa sa una nga 480)
+  let quality = 0.55;
+  let dataUrl = "";
+
+  for(let attempt = 0; attempt < 8; attempt++){
+    const height = (video.videoHeight / video.videoWidth * width) || (width * 0.75);
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(video, 0, 0, width, height);
+    dataUrl = canvas.toDataURL("image/jpeg", quality);
+
+    if(dataUrlSizeBytes(dataUrl) <= MAX_BYTES || width <= MIN_WIDTH){
+      break;
+    }
+
+    // Una, ubosan ang quality; kung mubo na kaayo, gamayon pa ang width
+    if(quality > 0.35){
+      quality -= 0.1;
+    } else {
+      width = Math.max(MIN_WIDTH, Math.round(width * 0.8));
+      quality = 0.55;
+    }
+  }
+
+  return dataUrl;
+}
+
+captureBtn.addEventListener("click", () => {
+  capturedDataUrl = compressFromVideo();
+
+  photoPreview.width = canvas.width;
+  photoPreview.height = canvas.height;
   photoPreview.getContext("2d").drawImage(canvas, 0, 0);
 
   stopCamera();
