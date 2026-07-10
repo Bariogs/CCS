@@ -182,36 +182,51 @@ shareBtn.addEventListener("click", async () => {
   if(!currentAttendance || !currentQrId) return;
   shareBtn.disabled = true;
   shareBtn.innerHTML = '<span class="spinner"></span>';
+
+  // 1. I-save sa Shared Records — kung mag-fail ni, i-stop gyud kay
+  //    kinahanglan gyud successful ni una sa tanan.
   try{
-    // 1. I-save sa Shared Records
     await addDoc(collection(db, "sharedRecords"), {
       attendanceId: currentAttendance.id,
       name: currentAttendance.name,
       address: currentAttendance.address,
       timestamp: serverTimestamp()
     });
-
-    // 2. Tangtangon ang QR record aron mawala na sa listahan/qr.html
-    await deleteDoc(doc(db, "qr", currentQrId));
-
-    shareMsg.textContent = "Shared! You can view it in the Shared Records.";
-    shareMsg.classList.add("show");
-    shareBtn.style.display = "none";
-
-    // 3. Tangtangon dayon ang tile gikan sa grid, dayon isira ang modal
-    if(currentTile){
-      currentTile.remove();
-      checkEmpty();
-    }
-    setTimeout(() => {
-      closeModal();
-    }, 900);
   }catch(err){
-    console.error(err);
+    console.error("Failed to add to sharedRecords:", err);
     shareMsg.className = "msg error show";
     shareMsg.textContent = "There was an issue sharing the record.";
     shareBtn.disabled = false;
     shareBtn.textContent = "Share";
+    return;
+  }
+
+  // 2. Human na-share, mawala dayon ang picture/tile sa screen —
+  //    kini nga UI update independent na sa deleteDoc sa ubos,
+  //    aron dili na "mo-stock" ang tile bisan pa ug ma-block sa
+  //    Firestore Security Rules ang delete permission.
+  shareMsg.textContent = "Shared! You can view it in the Shared Records.";
+  shareMsg.classList.add("show");
+  shareBtn.style.display = "none";
+
+  const tileToRemove = currentTile;
+  if(tileToRemove){
+    tileToRemove.remove();
+    checkEmpty();
+  }
+  setTimeout(() => {
+    closeModal();
+  }, 900);
+
+  // 3. Sulayan tangtangon ang QR record sa Firestore para dili na
+  //    mubalik pakita sa sunod nga reload. Kung mag-fail ni (e.g.
+  //    walay delete permission sa Security Rules), i-log ra ang
+  //    error — dili na kini makaapekto sa UI kay nawala na man daan
+  //    ang tile sa itaas.
+  try{
+    await deleteDoc(doc(db, "qr", currentQrId));
+  }catch(err){
+    console.error("Failed to delete qr doc (check Firestore rules for delete on 'qr'):", err);
   }
 });
 
