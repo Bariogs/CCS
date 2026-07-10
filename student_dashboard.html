@@ -107,7 +107,7 @@ async function loadCourseAndYear(){
       courseYearLine.textContent = `${course} • ${yearLevel}`;
       courseYearLine.style.display = "block";
 
-      // I-cache sad sa sessionStorage aron dali ra makuha sa ubang pages kung kinahanglan
+      
       sessionStorage.setItem("course", course);
       sessionStorage.setItem("yearLevel", yearLevel);
     }
@@ -117,8 +117,7 @@ async function loadCourseAndYear(){
 }
 loadCourseAndYear();
 
-// ---- Attendance Schedule check: gina-control sa admin kung kanus-a
-//      available ang "Take Attendance" button ----
+
 const scheduleMsg = document.getElementById("scheduleMsg");
 let attendanceWindow = null; // { start: Date, end: Date }
 
@@ -146,8 +145,8 @@ async function checkAttendanceWindow(){
     const snap = await getDoc(doc(db, "settings", "attendanceWindow"));
     if(!snap.exists()){
       attendanceWindow = null;
-      showScheduleMsg("Wala pa nagbutang ang admin ug schedule para sa attendance. Paghulat sa announcement.", false);
-      setStartButtonState(false, "Dili pa Available");
+      showScheduleMsg("Schedule not found. Please refresh the page.", false);
+      setStartButtonState(false, "Not Available");
       return;
     }
 
@@ -158,20 +157,20 @@ async function checkAttendanceWindow(){
 
     const now = new Date();
     if(now < start){
-      showScheduleMsg(`Available pa sa: ${formatWindowDisplay(start, end)}`, false);
-      setStartButtonState(false, "Wala pa Available");
+      showScheduleMsg(`Available : ${formatWindowDisplay(start, end)}`, false);
+      setStartButtonState(false, "Not Available");
     } else if(now > end){
-      showScheduleMsg(`Tapos na ang oras sa attendance (${formatWindowDisplay(start, end)}). Paghulat sa sunod nga schedule.`, false);
-      setStartButtonState(false, "Tapos na ang Oras");
+      showScheduleMsg(`Attendance time has ended (${formatWindowDisplay(start, end)}). Wait for the schedule.`, false);
+      setStartButtonState(false, "Not Available");
     } else {
-      showScheduleMsg(`Available karon hangtod ${end.toLocaleTimeString("en-PH", { hour: "numeric", minute: "2-digit" })}.`, true);
+      showScheduleMsg(`Available until ${end.toLocaleTimeString("en-PH", { hour: "numeric", minute: "2-digit" })}.`, true);
       setStartButtonState(true, "📷 Take Attendance");
     }
   }catch(err){
     console.error("Failed to check attendance window:", err);
     attendanceWindow = null;
-    showScheduleMsg("Wala ma-verify ang schedule. Sulayi pag-refresh sa page.", false);
-    setStartButtonState(false, "Dili Available");
+    showScheduleMsg("Schedule not found. Please refresh the page.", false);
+    setStartButtonState(false, "Not Available");
   }
 }
 
@@ -223,12 +222,11 @@ async function reverseGeocode(lat, lng){
 }
 
 startBtn.addEventListener("click", () => {
-  // I-verify pag-usab dinhi (dili lang ang disabled attribute) aron dili
-  // ma-bypass ang restriction pinaagi sa pag-enable sa button gamit ang
-  // browser dev tools.
+  
+
   const now = new Date();
   if(!attendanceWindow || now < attendanceWindow.start || now > attendanceWindow.end){
-    alert("Dili pa available ang pag-take sa attendance karon.");
+    alert("The attendance window is not available.");
     checkAttendanceWindow();
     return;
   }
@@ -293,19 +291,18 @@ cancelBtn.addEventListener("click", () => {
   showStep(stepStart);
 });
 
-// Ang Firestore document kay naay 1 MiB (1,048,576 bytes) nga limit.
-// I-target nato ang ~150 KB nga JPEG para dunay dako nga buffer,
-// ug automatic mo-gamay/mo-ubos ug quality kung kinahanglan.
-const MAX_BYTES = 150 * 1024; // ~150 KB target nga file size sa litrato
-const MIN_WIDTH = 160;        // dili na mo-adto ubos pani
 
+
+
+const MAX_BYTES = 150 * 1024; 
+const MIN_WIDTH = 160;        
 function dataUrlSizeBytes(dataUrl){
   const base64 = dataUrl.split(",")[1] || "";
   return Math.ceil(base64.length * 0.75);
 }
 
 function compressFromVideo(){
-  let width = 400; // sugod nga resolution (gamay na kaysa sa una nga 480)
+  let width = 400; 
   let quality = 0.55;
   let dataUrl = "";
 
@@ -321,7 +318,7 @@ function compressFromVideo(){
       break;
     }
 
-    // Una, ubosan ang quality; kung mubo na kaayo, gamayon pa ang width
+    
     if(quality > 0.35){
       quality -= 0.1;
     } else {
@@ -348,13 +345,12 @@ retakeBtn.addEventListener("click", async () => {
   await startCamera();
 });
 
-// ---- Step 3: submit ----
+
 submitBtn.addEventListener("click", async () => {
-  // I-verify pag-usab ang schedule sa dili pa i-submit, kay basin
-  // naglabay na ang oras samtang nagkuha pa sa location/litrato.
+ 
   const nowCheck = new Date();
   if(!attendanceWindow || nowCheck < attendanceWindow.start || nowCheck > attendanceWindow.end){
-    alert("Tapos na o wala pa available ang oras sa attendance. Dili ma-submit ang imong attendance.");
+    alert("Not Available or the attendance window has ended. Your attendance cannot be submitted.");
     stopCamera();
     showStep(stepStart);
     checkAttendanceWindow();
@@ -365,11 +361,11 @@ submitBtn.addEventListener("click", async () => {
   submitBtn.innerHTML = '<span class="spinner"></span>';
 
   try{
-    // I-apil ang course/year level (kung naa na sa sessionStorage) sa attendance record
+    
     const course = sessionStorage.getItem("course") || "";
     const yearLevel = sessionStorage.getItem("yearLevel") || "";
 
-    // 1. Save attendance record
+    
     const attendanceRef = await addDoc(collection(db, "attendance"), {
       name: displayName,
       course,
@@ -381,7 +377,7 @@ submitBtn.addEventListener("click", async () => {
       timestamp: serverTimestamp()
     });
 
-    // 2. Generate QR code (encodes the attendance doc id)
+
     const qrHolder = document.getElementById("qrHolder");
     qrHolder.innerHTML = "";
     const qrTemp = document.createElement("div");
@@ -391,7 +387,7 @@ submitBtn.addEventListener("click", async () => {
       height: 220
     });
 
-    // give the library a tick to render, then extract the image
+    
     await new Promise(r => setTimeout(r, 250));
     let qrDataUrl = "";
     const qrCanvas = qrTemp.querySelector("canvas");
@@ -402,7 +398,7 @@ submitBtn.addEventListener("click", async () => {
       qrDataUrl = qrImg.src;
     }
 
-    // 3. Save QR record, referencing the attendance doc
+    
     await addDoc(collection(db, "qr"), {
       attendanceId: attendanceRef.id,
       name: displayName,
@@ -412,7 +408,7 @@ submitBtn.addEventListener("click", async () => {
       timestamp: serverTimestamp()
     });
 
-    // 4. Show success + display the QR
+    
     const displayQR = document.createElement("img");
     displayQR.src = qrDataUrl;
     displayQR.style.width = "220px";
@@ -422,13 +418,14 @@ submitBtn.addEventListener("click", async () => {
 
     showStep(stepDone);
 
-    // Balik dayon sa student dashboard human sa pipila ka segundo
+   
+
     setTimeout(() => {
       window.location.href = "student_dashboard.html";
     }, 2500);
   }catch(err){
     console.error(err);
-    alert("Naay problema sa pag-submit. Sulayi pag-usab.");
+    alert("There was an error submitting your attendance, Please try again later.");
     submitBtn.disabled = false;
     submitBtn.textContent = "Submit Attendance";
   }

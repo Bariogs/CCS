@@ -407,7 +407,7 @@ cleanupBtn.addEventListener("click", async () => {
   }catch(err){
     console.error(err);
     cleanupMsg.className = "msg error show";
-    cleanupMsg.textContent = "Naay problema sa pagtangtang sa mga daan nga record. Tan-awa ang console para sa detalye.";
+    cleanupMsg.textContent = "There was an error clearing the old records.";
   }finally{
     cleanupBtn.disabled = false;
     cleanupBtn.textContent = "Clear old records";
