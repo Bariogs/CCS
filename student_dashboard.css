@@ -721,3 +721,153 @@ input, select{ font-size: 16px; }
    area on notauched devices; keep the viewfinder from ever exceeding
    the viewport height so the Capture button is always visible */
 #video{ max-height: 60vh; max-height: 60dvh; }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  /* ===== Liveness check UI ===== */
+  .camera-wrap{
+    position: relative;
+    display: inline-block;
+    max-width: 100%;
+  }
+  .camera-wrap video{
+    display: block;
+    border-radius: 12px;
+  }
+  .direction-guide{
+    position: absolute;
+    top: 14px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    background: rgba(0,0,0,0.55);
+    color: #fff;
+    padding: 10px 18px;
+    border-radius: 16px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity .25s ease;
+  }
+  .direction-guide.show{
+    opacity: 1;
+    animation: guideBounce 1s ease-in-out infinite;
+  }
+  .direction-guide .arrow-icon{
+    width: 34px;
+    height: 34px;
+    transition: transform .3s ease;
+  }
+  .direction-guide .direction-label{
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .3px;
+  }
+  @keyframes guideBounce{
+    0%, 100% { transform: translateX(-50%) translateY(0); }
+    50% { transform: translateX(-50%) translateY(-6px); }
+  }
+  .liveness-status{
+    position: absolute;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.55);
+    color: #fff;
+    font-size: 13px;
+    padding: 6px 14px;
+    border-radius: 20px;
+    white-space: nowrap;
+    max-width: 90%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .liveness-checklist{
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin: 12px 0;
+  }
+  .liveness-item{
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 20px;
+    background: #f2ede1;
+    color: #8a8272;
+    font-size: 13px;
+    font-weight: 600;
+    border: 1px solid #e2dccc;
+    transition: all .2s ease;
+  }
+  .liveness-item .icon{
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 2px solid #b9b19c;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    flex-shrink: 0;
+  }
+  .liveness-item.active{
+    background: #fff6df;
+    color: #7a5b00;
+    border-color: #e9c765;
+  }
+  .liveness-item.active .icon{
+    border-color: #e9c765;
+  }
+  .liveness-item.done{
+    background: #e6f7ee;
+    color: #1e8a56;
+    border-color: #9fdcbb;
+  }
+  .liveness-item.done .icon{
+    background: #2fbf71;
+    border-color: #2fbf71;
+    color: #fff;
+  }
+  .liveness-fallback-msg{
+    font-size: 13px;
+    color: #8a6d00;
+    background: #fff8e5;
+    border: 1px solid #f0dfa0;
+    border-radius: 10px;
+    padding: 8px 12px;
+    margin: 10px 0;
+    display: none;
+  }
+  .liveness-fallback-msg.show{
+    display: block;
+  }
+  .capture-manual-hint{
+    font-size: 12px;
+    color: #8a8272;
+    margin-top: 6px;
+  }

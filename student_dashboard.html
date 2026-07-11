@@ -22,24 +22,40 @@
     display: block;
     border-radius: 12px;
   }
-  .face-guide{
+  .direction-guide{
     position: absolute;
-    top: 50%;
+    top: 14px;
     left: 50%;
-    transform: translate(-50%, -50%);
-    width: 62%;
-    height: 82%;
-    border: 3px solid rgba(255, 200, 60, 0.85);
-    border-radius: 50% / 60%;
-    box-shadow: 0 0 0 2000px rgba(0,0,0,0.25);
-    transition: border-color .25s ease;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    background: rgba(0,0,0,0.55);
+    color: #fff;
+    padding: 10px 18px;
+    border-radius: 16px;
     pointer-events: none;
+    opacity: 0;
+    transition: opacity .25s ease;
   }
-  .face-guide.ok{
-    border-color: #2fbf71;
+  .direction-guide.show{
+    opacity: 1;
+    animation: guideBounce 1s ease-in-out infinite;
   }
-  .face-guide.bad{
-    border-color: #e05a4e;
+  .direction-guide .arrow-icon{
+    width: 34px;
+    height: 34px;
+    transition: transform .3s ease;
+  }
+  .direction-guide .direction-label{
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .3px;
+  }
+  @keyframes guideBounce{
+    0%, 100% { transform: translateX(-50%) translateY(0); }
+    50% { transform: translateX(-50%) translateY(-6px); }
   }
   .liveness-status{
     position: absolute;
@@ -166,7 +182,13 @@
 
       <div class="camera-wrap" id="cameraWrap">
         <video id="video" autoplay playsinline></video>
-        <div class="face-guide" id="faceGuide"></div>
+        <div class="direction-guide" id="directionGuide">
+          <svg class="arrow-icon" id="directionArrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="19" x2="12" y2="5"></line>
+            <polyline points="5 12 12 5 19 12"></polyline>
+          </svg>
+          <span class="direction-label" id="directionLabel">Look Up</span>
+        </div>
         <div class="liveness-status" id="livenessStatus">Loading... preparing face check</div>
       </div>
       <canvas id="canvas" style="display:none;"></canvas>
@@ -335,7 +357,9 @@ const canvas = document.getElementById("canvas");
 const photoPreview = document.getElementById("photoPreview");
 
 // ---- Liveness UI elements ----
-const faceGuide = document.getElementById("faceGuide");
+const directionGuide = document.getElementById("directionGuide");
+const directionArrow = document.getElementById("directionArrow");
+const directionLabel = document.getElementById("directionLabel");
 const livenessStatus = document.getElementById("livenessStatus");
 const livenessChecklist = document.getElementById("livenessChecklist");
 const livenessFallbackMsg = document.getElementById("livenessFallbackMsg");
@@ -500,12 +524,12 @@ function resetLivenessUI(){
   baseline = null;
   stableFrameCount = 0;
   detectionFailCount = 0;
-  faceGuide.className = "face-guide";
+  hideDirectionGuide();
   livenessFallbackMsg.classList.remove("show");
   livenessChecklist.style.display = "flex";
   Object.values(checkItems).forEach(el => el.className = "liveness-item");
   if(checkItems[livenessOrder[0]]) checkItems[livenessOrder[0]].classList.add("active");
-  livenessStatus.textContent = "Position your face inside the oval...";
+  livenessStatus.textContent = "Center your face in the camera...";
 }
 
 function markStepDone(stepName){
@@ -542,9 +566,25 @@ function computePose(landmarks, box){
   return { yaw, pitch };
 }
 
-function updateFaceGuide(ok){
-  faceGuide.classList.toggle("ok", ok);
-  faceGuide.classList.toggle("bad", !ok);
+const directionInfo = {
+  left:  { rotate: -90, label: "Turn Left" },
+  right: { rotate: 90,  label: "Turn Right" },
+  up:    { rotate: 0,   label: "Look Up" }
+};
+
+function showDirectionGuide(step){
+  const info = directionInfo[step];
+  if(!info){
+    directionGuide.classList.remove("show");
+    return;
+  }
+  directionArrow.style.transform = `rotate(${info.rotate}deg)`;
+  directionLabel.textContent = info.label;
+  directionGuide.classList.add("show");
+}
+
+function hideDirectionGuide(){
+  directionGuide.classList.remove("show");
 }
 
 async function detectFrame(){
@@ -555,8 +595,8 @@ async function detectFrame(){
     const result = await faceapi.detectSingleFace(video, options).withFaceLandmarks();
 
     if(!result){
-      updateFaceGuide(false);
-      livenessStatus.textContent = "No face detected — position it inside the oval.";
+      hideDirectionGuide();
+      livenessStatus.textContent = "No face detected — center your face in the camera.";
       detectionFailCount++;
     } else {
       detectionFailCount = 0;
@@ -568,24 +608,26 @@ async function detectFrame(){
       const wellSized = widthRatio > 0.18 && widthRatio < 0.85;
 
       if(!wellSized){
-        updateFaceGuide(false);
+        hideDirectionGuide();
         livenessStatus.textContent = widthRatio <= 0.18
           ? "Move your face closer to the camera."
           : "Move your face a bit farther from the camera.";
       } else {
-        updateFaceGuide(true);
         const pose = computePose(result.landmarks, box);
 
         // Lock in the "neutral" baseline first before starting the challenges
         if(!baseline){
+          hideDirectionGuide();
           stableFrameCount++;
           livenessStatus.textContent = "Hold still, calculating your neutral pose...";
           if(stableFrameCount >= STABLE_FRAMES_NEEDED){
             baseline = { yaw: pose.yaw, pitch: pose.pitch };
-            livenessStatus.textContent = "Great, now turn your head left.";
+            livenessStatus.textContent = "Great, now follow the arrow.";
+            showDirectionGuide(livenessOrder[livenessIndex]);
           }
         } else {
           const currentStep = livenessOrder[livenessIndex];
+          showDirectionGuide(currentStep);
 
           if(currentStep === "left"){
             livenessStatus.textContent = "Turn your head left.";
@@ -616,6 +658,7 @@ async function detectFrame(){
   if(detectionFailCount > MAX_DETECTION_FAILS){
     console.warn("Too many failed detections, switching to manual capture.");
     stopLivenessCheck();
+    hideDirectionGuide();
     livenessFallbackMsg.classList.add("show");
     livenessChecklist.style.display = "none";
     livenessStatus.textContent = "Please use the button below to capture manually.";
@@ -641,6 +684,7 @@ async function startLivenessCheck(){
     // Model truly failed to load (e.g. no internet access to the CDN) —
     // automatically fall back to manual capture so the UI doesn't
     // error out or get stuck.
+    hideDirectionGuide();
     livenessFallbackMsg.classList.add("show");
     livenessChecklist.style.display = "none";
     livenessStatus.textContent = "Please use the button below to capture manually.";
@@ -662,6 +706,7 @@ function stopLivenessCheck(){
 function triggerAutoCapture(){
   if(autoCaptureTriggered) return;
   autoCaptureTriggered = true;
+  hideDirectionGuide();
   livenessStatus.textContent = "Perfect! Capturing the picture now...";
   stopLivenessCheck();
   setTimeout(() => {
