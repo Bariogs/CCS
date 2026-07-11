@@ -7,6 +7,39 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="login.css">
+<style>
+  /* Wrapper para sa password field + toggle button */
+  .password-wrap{
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+  .password-wrap input{
+    width: 100%;
+    padding-right: 42px; /* space para sa icon */
+  }
+  .toggle-password{
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #666;
+  }
+  .toggle-password:hover{
+    color: #222;
+  }
+  .toggle-password svg{
+    width: 20px;
+    height: 20px;
+  }
+</style>
 </head>
 <body>
 
@@ -25,7 +58,16 @@
       </div>
       <div class="field">
         <label for="password">School ID (Password)</label>
-        <input type="password" id="password" autocomplete="current-password" required placeholder="e.g. COL-00789">
+        <div class="password-wrap">
+          <input type="password" id="password" autocomplete="current-password" required placeholder="e.g. COL-00789">
+          <button type="button" class="toggle-password" id="togglePassword" aria-label="Show password">
+            <!-- eye icon (shown state = hidden password) -->
+            <svg id="eyeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z"></path>
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+          </button>
+        </div>
       </div>
       <button type="submit" class="btn block" id="loginBtn">
         <span id="loginBtnText">Login</span>
@@ -53,6 +95,24 @@ function showError(text){
   msg.textContent = text;
   msg.className = "msg error show";
 }
+
+// ---- Show / Hide password toggle ----
+const passwordInput = document.getElementById("password");
+const togglePassword = document.getElementById("togglePassword");
+const eyeIcon = document.getElementById("eyeIcon");
+
+const eyeOpen = `<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z"></path><circle cx="12" cy="12" r="3"></circle>`;
+const eyeClosed = `<path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a21.6 21.6 0 0 1 5.06-6.06"></path>
+<path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a21.6 21.6 0 0 1-2.16 3.19"></path>
+<path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"></path>
+<line x1="1" y1="1" x2="23" y2="23"></line>`;
+
+togglePassword.addEventListener("click", () => {
+  const isHidden = passwordInput.type === "password";
+  passwordInput.type = isHidden ? "text" : "password";
+  eyeIcon.innerHTML = isHidden ? eyeClosed : eyeOpen;
+  togglePassword.setAttribute("aria-label", isHidden ? "Hide password" : "Show password");
+});
 
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
