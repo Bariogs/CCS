@@ -8,7 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="student_dashboard.css">
 <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
-<!-- Face detection library para sa liveness check (blink / look left / look right / look up) -->
+<!-- Face detection library for liveness check (look left / look right / look up) -->
 <script defer src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
 
 <style>
@@ -145,7 +145,7 @@
     <!-- STEP 0: start -->
     <div id="stepStart" class="attend-flow">
       <div id="scheduleMsg" class="msg" style="display:none;"></div>
-      <button class="btn gold" id="startBtn" disabled>Ginacheck ang schedule...</button>
+      <button class="btn gold" id="startBtn" disabled>Checking schedule...</button>
     </div>
 
     <!-- STEP 1: location check -->
@@ -167,25 +167,24 @@
       <div class="camera-wrap" id="cameraWrap">
         <video id="video" autoplay playsinline></video>
         <div class="face-guide" id="faceGuide"></div>
-        <div class="liveness-status" id="livenessStatus">Naglingkod... ginakarga ang face check</div>
+        <div class="liveness-status" id="livenessStatus">Loading... preparing face check</div>
       </div>
       <canvas id="canvas" style="display:none;"></canvas>
 
       <div class="liveness-checklist" id="livenessChecklist">
-        <div class="liveness-item" id="checkBlink" data-step="blink"><span class="icon">1</span> Pamikit (Blink)</div>
-        <div class="liveness-item" id="checkLeft" data-step="left"><span class="icon">2</span> Lingi Wala</div>
-        <div class="liveness-item" id="checkRight" data-step="right"><span class="icon">3</span> Lingi Tuo</div>
-        <div class="liveness-item" id="checkUp" data-step="up"><span class="icon">4</span> Hangad (Tan-aw Taas)</div>
+        <div class="liveness-item" id="checkLeft" data-step="left"><span class="icon">1</span> Look Left</div>
+        <div class="liveness-item" id="checkRight" data-step="right"><span class="icon">2</span> Look Right</div>
+        <div class="liveness-item" id="checkUp" data-step="up"><span class="icon">3</span> Look Up</div>
       </div>
 
       <div class="liveness-fallback-msg" id="livenessFallbackMsg">
-        Dili available ang automatic face check karon (posibleng connection issue). Gamita na lang ang button sa ubos para mano-mano nga pagkuha og litrato.
+        Automatic face check is not available right now (possibly a connection issue). Please use the button below to take the picture manually.
       </div>
 
       <br>
       <button class="btn gold" id="captureBtn">Capture Picture</button>
       <button class="btn outline" id="cancelBtn">Cancel</button>
-      <div class="capture-manual-hint">Naglisod ang automatic capture? Puwede ka mo-click sa "Capture Picture" para mano-mano.</div>
+      <div class="capture-manual-hint">Having trouble with auto-capture? You can click "Capture Picture" to take it manually.</div>
     </div>
 
     <!-- STEP 3: preview / submit -->
@@ -227,7 +226,7 @@ document.getElementById("logoutBtn").addEventListener("click", () => {
   window.location.href = "login.html";
 });
 
-// ---- I-fetch ang Course ug Year Level sa naka-login nga estudyante ----
+// ---- Fetch the Course and Year Level of the logged-in student ----
 const courseYearLine = document.getElementById("courseYearLine");
 
 async function loadCourseAndYear(){
@@ -309,8 +308,8 @@ async function checkAttendanceWindow(){
 }
 
 checkAttendanceWindow();
-// i-recheck matag 30 segundos aron automatic mag-enable/disable
-// bisan wala mag-reload ang estudyante sa page
+// recheck every 30 seconds so it automatically enables/disables
+// even if the student doesn't reload the page
 setInterval(checkAttendanceWindow, 30000);
 
 // ---- Elements ----
@@ -341,7 +340,6 @@ const livenessStatus = document.getElementById("livenessStatus");
 const livenessChecklist = document.getElementById("livenessChecklist");
 const livenessFallbackMsg = document.getElementById("livenessFallbackMsg");
 const checkItems = {
-  blink: document.getElementById("checkBlink"),
   left: document.getElementById("checkLeft"),
   right: document.getElementById("checkRight"),
   up: document.getElementById("checkUp")
@@ -418,7 +416,7 @@ async function startCamera(){
     addressText.textContent = `Address: ${locationData.address}`;
     showStep(stepCamera);
 
-    // Hulaton nga ma-ready ang video bag-o mo-start ang liveness detection
+    // Wait for the video to be ready before starting liveness detection
     video.onloadedmetadata = () => {
       startLivenessCheck();
     };
@@ -444,11 +442,15 @@ cancelBtn.addEventListener("click", () => {
 });
 
 /* =======================================================================
-   LIVENESS DETECTION (Blink -> Look Left -> Look Right -> Look Up)
-   Kung mo-complete ang tanan, mag automatic capture na dayon — dili na
-   kinahanglan e-click ang "Capture Picture" (kana button para na lang
-   sa fallback kung dili ma-load ang face detection model, o kung
-   naglisod ang detection sa specific device/camera).
+   LIVENESS DETECTION (Look Left -> Look Right -> Look Up)
+   Once all steps are complete, the picture is captured automatically —
+   there's no need to click "Capture Picture" (that button is just a
+   fallback in case the face detection model fails to load, or if
+   detection has trouble on a specific device/camera).
+   Note: the "blink" step was removed because blinking happens too
+   quickly and can be missed by the camera's frame rate, causing delays
+   or missed detections. Left/Right/Up poses are more stable and easier
+   to detect accurately.
    ======================================================================= */
 
 const MODEL_URL = "https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights";
@@ -456,25 +458,22 @@ const MODEL_URL = "https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@mas
 let faceApiReady = false;
 let modelLoadAttempted = false;
 
-// Threshold constants — puwede i-adjust kung sakto na ang balance sa
-// sensitivity (mas gamay = mas sensitive, mas dali ma-trigger)
-const EAR_CLOSED = 0.20;   // ubos niini = piyong ang mata
-const EAR_OPEN = 0.24;     // taas niini = bukas na balik ang mata
-const YAW_DELTA = 0.10;    // pagbagting sa yaw gikan sa neutral pose
-const PITCH_DELTA = 0.14;  // pagbagting sa pitch gikan sa neutral pose
-const STABLE_FRAMES_NEEDED = 8; // pila ka frames bag-o i-lock ang neutral baseline
+// Threshold constants — adjust these to balance sensitivity
+// (smaller = more sensitive, triggers more easily)
+const YAW_DELTA = 0.10;    // deviation of yaw from the neutral pose
+const PITCH_DELTA = 0.14;  // deviation of pitch from the neutral pose
+const STABLE_FRAMES_NEEDED = 8; // how many frames before locking in the neutral baseline
 
-const livenessOrder = ["blink", "left", "right", "up"];
+const livenessOrder = ["left", "right", "up"];
 let livenessIndex = 0;
 let livenessActive = false;
 let livenessLoopHandle = null;
 let autoCaptureTriggered = false;
 
-let eyesClosed = false;
-let baseline = null;        // { yaw, pitch } sa neutral/starting pose
+let baseline = null;        // { yaw, pitch } of the neutral/starting pose
 let stableFrameCount = 0;
 let detectionFailCount = 0;
-const MAX_DETECTION_FAILS = 40; // kung sige ug fail ang detection, mo-fallback na sa manual
+const MAX_DETECTION_FAILS = 40; // if detection keeps failing, fall back to manual mode
 
 async function loadFaceApiModels(){
   if(modelLoadAttempted) return;
@@ -491,14 +490,13 @@ async function loadFaceApiModels(){
     faceApiReady = false;
   }
 }
-// I-preload dayon samtang ginabuhat pa ang location check, aron paspas
-// ra pag-abot sa camera step.
+// Preload right away while the location check is still happening, so the
+// camera step loads faster once it's reached.
 loadFaceApiModels();
 
 function resetLivenessUI(){
   livenessIndex = 0;
   autoCaptureTriggered = false;
-  eyesClosed = false;
   baseline = null;
   stableFrameCount = 0;
   detectionFailCount = 0;
@@ -507,7 +505,7 @@ function resetLivenessUI(){
   livenessChecklist.style.display = "flex";
   Object.values(checkItems).forEach(el => el.className = "liveness-item");
   if(checkItems[livenessOrder[0]]) checkItems[livenessOrder[0]].classList.add("active");
-  livenessStatus.textContent = "Ibutang ang imong nawong sa sulod sa oval...";
+  livenessStatus.textContent = "Position your face inside the oval...";
 }
 
 function markStepDone(stepName){
@@ -521,15 +519,6 @@ function markStepDone(stepName){
   } else {
     triggerAutoCapture();
   }
-}
-
-function eyeAspectRatio(eye){
-  const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
-  const A = dist(eye[1], eye[5]);
-  const B = dist(eye[2], eye[4]);
-  const C = dist(eye[0], eye[3]);
-  if(C === 0) return 0.3; // safe fallback, dili mag-divide by zero
-  return (A + B) / (2 * C);
 }
 
 function computePose(landmarks, box){
@@ -548,7 +537,7 @@ function computePose(landmarks, box){
 
   const upperDist = Math.max(1, noseTip.y - browMidY);
   const lowerDist = Math.max(1, chin.y - noseTip.y);
-  const pitch = lowerDist / upperDist; // taas ang value = nag-hangad (nag-tan-aw sa taas)
+  const pitch = lowerDist / upperDist; // higher value = looking up
 
   return { yaw, pitch };
 }
@@ -567,59 +556,49 @@ async function detectFrame(){
 
     if(!result){
       updateFaceGuide(false);
-      livenessStatus.textContent = "Wa'y nakit-an nga nawong — ibutang sa sulod sa oval.";
+      livenessStatus.textContent = "No face detected — position it inside the oval.";
       detectionFailCount++;
     } else {
       detectionFailCount = 0;
       const box = result.detection.box;
 
-      // Basic "posture" check: kinahanglan dako og patas ang face box
-      // (dili layo, dili duol kaayo) para sakto ang detection.
+      // Basic "posture" check: the face box needs to be a reasonable
+      // size (not too far, not too close) for accurate detection.
       const widthRatio = box.width / video.videoWidth;
       const wellSized = widthRatio > 0.18 && widthRatio < 0.85;
 
       if(!wellSized){
         updateFaceGuide(false);
         livenessStatus.textContent = widthRatio <= 0.18
-          ? "Duol-a ang imong nawong sa camera."
-          : "Layo-i gamay ang imong nawong sa camera.";
+          ? "Move your face closer to the camera."
+          : "Move your face a bit farther from the camera.";
       } else {
         updateFaceGuide(true);
         const pose = computePose(result.landmarks, box);
 
-        // I-lock una ang "neutral" nga baseline bag-o mo-start ang challenges
+        // Lock in the "neutral" baseline first before starting the challenges
         if(!baseline){
           stableFrameCount++;
-          livenessStatus.textContent = "Hulat lang, ginakalkula ang imong normal nga pose...";
+          livenessStatus.textContent = "Hold still, calculating your neutral pose...";
           if(stableFrameCount >= STABLE_FRAMES_NEEDED){
             baseline = { yaw: pose.yaw, pitch: pose.pitch };
-            livenessStatus.textContent = "Sige, pamikit una (blink).";
+            livenessStatus.textContent = "Great, now turn your head left.";
           }
         } else {
           const currentStep = livenessOrder[livenessIndex];
-          const eyeAvg = (eyeAspectRatio(result.landmarks.getLeftEye()) +
-                          eyeAspectRatio(result.landmarks.getRightEye())) / 2;
 
-          if(currentStep === "blink"){
-            livenessStatus.textContent = "Pamikit ang imong mata (blink).";
-            if(!eyesClosed && eyeAvg < EAR_CLOSED){
-              eyesClosed = true;
-            } else if(eyesClosed && eyeAvg > EAR_OPEN){
-              eyesClosed = false;
-              markStepDone("blink");
-            }
-          } else if(currentStep === "left"){
-            livenessStatus.textContent = "Lingi sa wala (turn left).";
+          if(currentStep === "left"){
+            livenessStatus.textContent = "Turn your head left.";
             if((pose.yaw - baseline.yaw) < -YAW_DELTA){
               markStepDone("left");
             }
           } else if(currentStep === "right"){
-            livenessStatus.textContent = "Lingi sa tuo (turn right).";
+            livenessStatus.textContent = "Turn your head right.";
             if((pose.yaw - baseline.yaw) > YAW_DELTA){
               markStepDone("right");
             }
           } else if(currentStep === "up"){
-            livenessStatus.textContent = "Hangad (tan-aw sa taas).";
+            livenessStatus.textContent = "Look up.";
             if((pose.pitch - baseline.pitch) > PITCH_DELTA){
               markStepDone("up");
             }
@@ -628,8 +607,8 @@ async function detectFrame(){
       }
     }
   }catch(err){
-    // Bisan naa'y error sa usa ka frame, dili na ni mo-stop sa tibuok
-    // flow — mo-continue ra ang loop, ug naa gihapon ang manual button.
+    // Even if a single frame errors out, it won't stop the whole flow —
+    // the loop just continues, and the manual button is still available.
     console.error("Detection frame error:", err);
     detectionFailCount++;
   }
@@ -639,7 +618,7 @@ async function detectFrame(){
     stopLivenessCheck();
     livenessFallbackMsg.classList.add("show");
     livenessChecklist.style.display = "none";
-    livenessStatus.textContent = "Gamita na lang ang button sa ubos para mano-mano.";
+    livenessStatus.textContent = "Please use the button below to capture manually.";
     return;
   }
 
@@ -652,18 +631,19 @@ async function startLivenessCheck(){
   resetLivenessUI();
 
   if(!faceApiReady){
-    // Naghulat sa model kung wala pa na-load (pananglitan naa pa sa
-    // pag-check sa location step ang pag-load); paghatag og gamay nga
-    // extra time bag-o mo-fallback sa manual.
+    // Wait for the model in case it hasn't finished loading yet (e.g. it's
+    // still loading while the location step is being checked); give it a
+    // bit of extra time before falling back to manual mode.
     await new Promise(r => setTimeout(r, 500));
   }
 
   if(!faceApiReady){
-    // Model gyud wala na-load (e.g. no internet sa CDN) — automatic
-    // fallback sa manual capture button para dili mag-error/stuck ang UI.
+    // Model truly failed to load (e.g. no internet access to the CDN) —
+    // automatically fall back to manual capture so the UI doesn't
+    // error out or get stuck.
     livenessFallbackMsg.classList.add("show");
     livenessChecklist.style.display = "none";
-    livenessStatus.textContent = "Gamita na lang ang button sa ubos para mano-mano.";
+    livenessStatus.textContent = "Please use the button below to capture manually.";
     return;
   }
 
@@ -682,7 +662,7 @@ function stopLivenessCheck(){
 function triggerAutoCapture(){
   if(autoCaptureTriggered) return;
   autoCaptureTriggered = true;
-  livenessStatus.textContent = "Perpekto! Ginakuha na ang litrato...";
+  livenessStatus.textContent = "Perfect! Capturing the picture now...";
   stopLivenessCheck();
   setTimeout(() => {
     performCapture();
@@ -725,8 +705,8 @@ function compressFromVideo(){
   return dataUrl;
 }
 
-// performCapture() = shared logic para sa auto-capture (human ma-complete
-// ang liveness check) og manual capture (pag-click sa button).
+// performCapture() = shared logic for auto-capture (after the liveness
+// check completes) and manual capture (clicking the button).
 function performCapture(){
   stopLivenessCheck();
   capturedDataUrl = compressFromVideo();
