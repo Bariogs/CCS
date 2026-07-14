@@ -40,21 +40,6 @@
         Attendance for this schedule has ended.
     </p>
 
-    <!-- Login Choice -->
-    <div id="loginChoice" style="display:none; margin-top:20px;">
-
-        <h3>Select Login Type</h3>
-
-        <button onclick="window.location.href='login.html'">
-            Student
-        </button>
-
-        <button onclick="window.location.href='admin_login.html'">
-            Admin
-        </button>
-
-    </div>
-
 </main>
 
 <footer>
@@ -65,14 +50,13 @@
 
 <script>
 const loginBtn = document.getElementById("loginBtn");
-const loginChoice = document.getElementById("loginChoice");
 
 // The button starts hidden in the HTML; show it right away since this
 // page no longer waits on an attendance-window check before displaying it.
 loginBtn.style.display = "inline-block";
 
 loginBtn.addEventListener("click", () => {
-    loginChoice.style.display = "block";
+    window.location.href = "login.html";
 });
 </script>
 
