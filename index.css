@@ -168,6 +168,24 @@ main > p,
   margin-right: auto;
 }
 
+/* the highlighted school-name line that closes out the description,
+   right above the Log In button */
+.school-highlight{
+  display: inline-block;
+  margin: 0 auto 4px;
+  padding: 6px 16px;
+  background: var(--gold-pale);
+  color: var(--navy-deep);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: .95rem;
+  letter-spacing: .01em;
+  border-radius: var(--radius-sm);
+}
+main{
+  text-align: center;
+}
+
 /* ===========================================================
    Countdown — the departure-board moment (signature element)
    =========================================================== */
