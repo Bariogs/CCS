@@ -115,6 +115,15 @@ header h1{
   word-wrap: break-word;
 }
 
+/* highlighted school-name badge, sits between the two logos */
+header h1.school-highlight{
+  display: inline-block;
+  color: var(--navy-deep);
+  background: var(--gold-pale);
+  padding: 4px 14px;
+  border-radius: var(--radius-sm);
+}
+
 header h2{
   margin: 0;
   font-family: var(--font-body);
@@ -160,7 +169,6 @@ main > p{
 main > p,
 #countdownPopup,
 #closedMessage,
-#loginBtn,
 #loginChoice{
   width: 100%;
   max-width: 480px;
@@ -168,20 +176,6 @@ main > p,
   margin-right: auto;
 }
 
-/* the highlighted school-name line that closes out the description,
-   right above the Log In button */
-.school-highlight{
-  display: inline-block;
-  margin: 0 auto 4px;
-  padding: 6px 16px;
-  background: var(--gold-pale);
-  color: var(--navy-deep);
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: .95rem;
-  letter-spacing: .01em;
-  border-radius: var(--radius-sm);
-}
 main{
   text-align: center;
 }
@@ -274,14 +268,17 @@ button:active{ transform: translateY(1px); }
 
 #loginBtn{
   display: block;
-  width: 100%;
+  width: calc(100% + 36px);
+  max-width: none;
   background: var(--gold);
   color: var(--navy-deep);
-  border: none;
+  border: 2px solid var(--gold-deep);
   padding: 15px 20px;
   min-height: 50px;
   font-size: 1.05rem;
   margin-top: 18px;
+  margin-left: -18px;
+  margin-right: -18px;
 }
 #loginBtn:hover{ background: var(--gold-deep); }
 
@@ -363,6 +360,11 @@ footer{
   main{ padding: 24px 16px; }
   #countdownPopup, #loginChoice{ padding: 18px; }
   #countdownTimer{ font-size: clamp(1.5rem, 10vw, 2rem); }
+  #loginBtn{
+    width: calc(100% + 32px);
+    margin-left: -16px;
+    margin-right: -16px;
+  }
   #loginBtn, #loginChoice button{
     padding-top: 13px;
     padding-bottom: 13px;
