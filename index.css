@@ -149,6 +149,7 @@ header h2{
 main{
   flex: 1;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   padding: 32px 18px;
