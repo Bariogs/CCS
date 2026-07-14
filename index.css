@@ -315,3 +315,42 @@ footer{
   header h2{ font-size: .8rem; }
   main > p{ font-size: .92rem; }
 }
+
+
+
+
+
+
+  /* ===== Header logos (left & right) ===== */
+  header{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    text-align: center;
+  }
+  header .header-text{
+    flex: 1;
+    min-width: 0;
+  }
+  header .logo{
+    width: 72px;
+    height: 72px;
+    object-fit: contain;
+    flex-shrink: 0;
+  }
+  @media (max-width: 600px){
+    header{
+      flex-direction: column;
+      gap: 10px;
+    }
+    header .logo{
+      width: 50px;
+      height: 50px;
+    }
+  }
+
+  /* ===== Login button spacing ===== */
+  #loginBtn{
+    margin-top: 18px;
+  }
