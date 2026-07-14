@@ -1,9 +1,6 @@
 /* ===========================================================
    CCS Attendance — Public Entry Screen
-   Same "scan console" language as the admin panel (navy + brass
-   gold on parchment), but staged as a boarding-pass / departure-
-   board moment: the countdown is the hero, since the whole point
-   of this screen is "is the attendance window open yet?"
+   Mobile/Android-optimized version
    =========================================================== */
 
 :root{
@@ -45,12 +42,15 @@ html{
   scroll-behavior: smooth;
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
+  /* stop Android Chrome from auto-bumping font sizes on rotate */
+  height: 100%;
 }
 
 body{
   margin: 0;
   min-height: 100vh;
-  min-height: 100dvh;
+  min-height: 100dvh;      /* Android address-bar-safe viewport height */
+  height: 100%;
   display: flex;
   flex-direction: column;
   font-family: var(--font-body);
@@ -63,6 +63,8 @@ body{
   -webkit-tap-highlight-color: transparent;
   overflow-x: hidden;
   overscroll-behavior-y: contain;
+  /* prevent Android's "pull to refresh" from fighting the scroll */
+  overscroll-behavior: contain;
 }
 
 ::selection{ background: var(--gold-pale); color: var(--navy-deep); }
@@ -77,28 +79,47 @@ a:focus-visible, button:focus-visible{
    Header — the institutional letterhead
    =========================================================== */
 header{
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
   text-align: center;
   padding: 44px 20px 28px;
   padding-top: max(44px, env(safe-area-inset-top));
+  padding-left: max(20px, env(safe-area-inset-left));
+  padding-right: max(20px, env(safe-area-inset-right));
   color: var(--paper);
   background: var(--navy-deep);
   border-bottom: 3px solid var(--gold);
+}
+
+header .header-text{
+  flex: 1;
+  min-width: 0;
+}
+
+header .logo{
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  flex-shrink: 0;
 }
 
 header h1{
   margin: 0 0 6px;
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: clamp(1.25rem, 4.5vw, 1.65rem);
+  font-size: clamp(1.1rem, 5vw, 1.65rem);
   letter-spacing: -.01em;
   line-height: 1.25;
+  word-wrap: break-word;
 }
 
 header h2{
   margin: 0;
   font-family: var(--font-body);
   font-weight: 500;
-  font-size: clamp(.85rem, 2.6vw, .98rem);
+  font-size: clamp(.78rem, 3vw, .98rem);
   color: var(--gold-pale);
   letter-spacing: .04em;
   text-transform: uppercase;
@@ -113,6 +134,10 @@ main{
   align-items: center;
   justify-content: center;
   padding: 32px 18px;
+  padding-left: max(18px, env(safe-area-inset-left));
+  padding-right: max(18px, env(safe-area-inset-right));
+  position: relative;
+  width: 100%;
 }
 
 main > p{
@@ -125,15 +150,6 @@ main > p{
   position: relative;
 }
 
-/* wrap the whole entry flow in one card-like column so it reads as
-   a single ticket/boarding-pass unit rather than loose page text */
-main{
-  position: relative;
-}
-main::before{
-  content: "";
-}
-
 .wrap-hero{
   width: 100%;
   max-width: 480px;
@@ -141,14 +157,12 @@ main::before{
   text-align: center;
 }
 
-/* Since the HTML doesn't have a wrapping container, style the direct
-   children of <main> to form that column, with a card-style backdrop
-   behind the interactive controls only. */
 main > p,
 #countdownPopup,
 #closedMessage,
 #loginBtn,
 #loginChoice{
+  width: 100%;
   max-width: 480px;
   margin-left: auto;
   margin-right: auto;
@@ -167,7 +181,6 @@ main > p,
   box-shadow: 0 1px 2px rgba(14,26,51,.05), 0 14px 28px -20px rgba(14,26,51,.4);
 }
 
-/* corner brackets echoing the admin console's scan-target motif */
 #countdownPopup::before,
 #countdownPopup::after{
   content: "";
@@ -202,11 +215,17 @@ main > p,
   margin: 0;
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: clamp(1.8rem, 8vw, 2.4rem);
+  font-size: clamp(1.6rem, 9vw, 2.4rem);
   color: var(--navy-deep);
   font-variant-numeric: tabular-nums;
   letter-spacing: .02em;
+  word-break: keep-all;
+  white-space: nowrap;
+  overflow-x: auto;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
+#countdownTimer::-webkit-scrollbar{ display: none; }
 
 /* closed-state message: calm, not alarming, but clearly final */
 #closedMessage{
@@ -221,7 +240,7 @@ main > p,
 }
 
 /* ===========================================================
-   Buttons
+   Buttons — sized to Android's 48dp minimum touch target
    =========================================================== */
 button{
   font-family: var(--font-body);
@@ -230,6 +249,8 @@ button{
   cursor: pointer;
   border-radius: var(--radius-sm);
   transition: background .15s var(--ease), color .15s var(--ease), border-color .15s var(--ease), transform .1s var(--ease);
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation; /* removes 300ms tap delay on Android */
 }
 button:active{ transform: translateY(1px); }
 
@@ -242,6 +263,7 @@ button:active{ transform: translateY(1px); }
   padding: 15px 20px;
   min-height: 50px;
   font-size: 1.05rem;
+  margin-top: 18px;
 }
 #loginBtn:hover{ background: var(--gold-deep); }
 
@@ -277,8 +299,6 @@ button:active{ transform: translateY(1px); }
   border-color: var(--navy-deep);
 }
 
-/* the Student option reads as the primary path since most visits
-   to this screen are students taking attendance */
 #loginChoice button:first-of-type{
   background: var(--navy-deep);
   color: var(--paper);
@@ -301,56 +321,66 @@ footer{
 }
 
 /* ===========================================================
-   Responsive — phones
+   Responsive — tablets / small laptops
+   =========================================================== */
+@media (max-width: 600px){
+  header{
+    flex-direction: column;
+    gap: 10px;
+  }
+  header .logo{
+    width: 50px;
+    height: 50px;
+  }
+}
+
+/* ===========================================================
+   Responsive — phones (Android mid-range, ~480px and below)
    =========================================================== */
 @media (max-width: 480px){
   header{ padding: 34px 16px 22px; }
   main{ padding: 24px 16px; }
   #countdownPopup, #loginChoice{ padding: 18px; }
-  #countdownTimer{ font-size: clamp(1.6rem, 9vw, 2rem); }
+  #countdownTimer{ font-size: clamp(1.5rem, 10vw, 2rem); }
+  #loginBtn, #loginChoice button{
+    padding-top: 13px;
+    padding-bottom: 13px;
+  }
 }
 
+/* ===========================================================
+   Responsive — small/budget Android phones (≤360px, e.g. many
+   entry-level Android devices sold locally)
+   =========================================================== */
 @media (max-width: 360px){
-  header h1{ font-size: 1.15rem; }
-  header h2{ font-size: .8rem; }
-  main > p{ font-size: .92rem; }
+  header h1{ font-size: 1.05rem; }
+  header h2{ font-size: .76rem; }
+  header .logo{ width: 42px; height: 42px; }
+  main > p{ font-size: .9rem; }
+  #countdownTimer{ font-size: clamp(1.3rem, 11vw, 1.7rem); }
+  #countdownPopup, #loginChoice{ padding: 16px; }
 }
 
+/* ===========================================================
+   Landscape mode on phones — headers/countdown eat too much
+   vertical space when the phone is rotated, so shrink and let
+   main content stay reachable without scrolling awkwardly
+   =========================================================== */
+@media (max-height: 420px) and (orientation: landscape){
+  header{ padding: 14px 20px; }
+  header .logo{ width: 36px; height: 36px; }
+  header h1{ font-size: 1rem; margin-bottom: 2px; }
+  header h2{ font-size: .72rem; }
+  main{ padding: 14px 18px; }
+  #countdownPopup{ padding: 14px 16px 16px; margin-bottom: 12px; }
+  #countdownTimer{ font-size: clamp(1.2rem, 6vh, 1.8rem); }
+  footer{ padding: 8px 20px; font-size: .7rem; }
+}
 
-
-
-
-
-  /* ===== Header logos (left & right) ===== */
-  header{
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 20px;
-    text-align: center;
-  }
-  header .header-text{
-    flex: 1;
-    min-width: 0;
-  }
-  header .logo{
-    width: 72px;
-    height: 72px;
-    object-fit: contain;
-    flex-shrink: 0;
-  }
-  @media (max-width: 600px){
-    header{
-      flex-direction: column;
-      gap: 10px;
-    }
-    header .logo{
-      width: 50px;
-      height: 50px;
-    }
-  }
-
-  /* ===== Login button spacing ===== */
-  #loginBtn{
-    margin-top: 18px;
-  }
+/* ===========================================================
+   Prevent iOS/Android input zoom-on-focus if inputs are ever
+   added to this screen (font-size below 16px triggers zoom)
+   =========================================================== */
+input, select, textarea{
+  font-size: max(1rem, 16px);
+}
