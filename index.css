@@ -81,7 +81,7 @@ a:focus-visible, button:focus-visible{
 header{
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: space-between;
   gap: 20px;
   text-align: center;
   padding: 44px 20px 28px;
@@ -322,10 +322,13 @@ footer{
 
 /* ===========================================================
    Responsive — tablets / small laptops
+   Logos stay pinned left/right at every width — only their size
+   and the gap shrink. justify-content: space-between keeps the
+   logos glued to the outer edges instead of drifting inward.
    =========================================================== */
 @media (max-width: 600px){
   header{
-    flex-direction: column;
+    justify-content: space-between;
     gap: 10px;
   }
   header .logo{
@@ -338,7 +341,7 @@ footer{
    Responsive — phones (Android mid-range, ~480px and below)
    =========================================================== */
 @media (max-width: 480px){
-  header{ padding: 34px 16px 22px; }
+  header{ padding: 18px 14px; }
   main{ padding: 24px 16px; }
   #countdownPopup, #loginChoice{ padding: 18px; }
   #countdownTimer{ font-size: clamp(1.5rem, 10vw, 2rem); }
@@ -350,12 +353,14 @@ footer{
 
 /* ===========================================================
    Responsive — small/budget Android phones (≤360px, e.g. many
-   entry-level Android devices sold locally)
+   entry-level Android devices sold locally). Logos shrink further
+   but keep their left/right position — never stack.
    =========================================================== */
 @media (max-width: 360px){
-  header h1{ font-size: 1.05rem; }
-  header h2{ font-size: .76rem; }
-  header .logo{ width: 42px; height: 42px; }
+  header{ padding: 14px 10px; gap: 8px; }
+  header h1{ font-size: .95rem; }
+  header h2{ font-size: .7rem; }
+  header .logo{ width: 38px; height: 38px; }
   main > p{ font-size: .9rem; }
   #countdownTimer{ font-size: clamp(1.3rem, 11vw, 1.7rem); }
   #countdownPopup, #loginChoice{ padding: 16px; }
