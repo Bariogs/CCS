@@ -7,6 +7,25 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="admin_dashboard.css">
+<style>
+  /* ===== Inline edit fields for the students table ===== */
+  .editNameInput, .editSchoolIdInput{
+    width: 100%;
+    min-width: 120px;
+    padding: 6px 8px;
+    border: 1px solid #d8d2c0;
+    border-radius: 6px;
+    font-family: inherit;
+    font-size: 13px;
+    box-sizing: border-box;
+  }
+  .records td .btn{
+    margin-right: 6px;
+  }
+  .records td .btn:last-child{
+    margin-right: 0;
+  }
+</style>
 </head>
 <body>
 
@@ -135,7 +154,7 @@
 <script type="module">
 import { db } from "./firebase.js";
 import {
-  collection, addDoc, getDocs, getDoc, setDoc, query, orderBy, where, deleteDoc, doc, Timestamp, serverTimestamp
+  collection, addDoc, getDocs, getDoc, setDoc, updateDoc, query, orderBy, where, deleteDoc, doc, Timestamp, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-firestore.js";
 
 // used to check for a duplicate username when adding a student
@@ -143,6 +162,17 @@ async function nameExists(name){
   const q = query(collection(db, "students"), where("name", "==", name));
   const snap = await getDocs(q);
   return !snap.empty;
+}
+
+// simple escape so a student's name/ID with special characters (", <, >, &)
+// can't break the table's HTML when we insert it via innerHTML
+function escapeHtml(str){
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/'/g, "&#39;");
 }
 
 // ---- Auth guard ----
@@ -173,13 +203,36 @@ let visibleCount = PAGE_SIZE;
 
 function renderStudentRow(docId, data, index){
   const tr = document.createElement("tr");
+  tr.dataset.id = docId;
   tr.innerHTML = `
     <td>${index}</td>
-    <td>${data.name}</td>
-    <td>${data.schoolId}</td>
-    <td>${data.course || "—"}</td>
-    <td>${data.yearLevel || "—"}</td>
-    <td><button type="button" class="btn outline deleteStudentBtn" data-id="${docId}" data-name="${data.name}">Delete</button></td>
+    <td>${escapeHtml(data.name)}</td>
+    <td>${escapeHtml(data.schoolId)}</td>
+    <td>${escapeHtml(data.course || "—")}</td>
+    <td>${escapeHtml(data.yearLevel || "—")}</td>
+    <td>
+      <button type="button" class="btn outline editStudentBtn" data-id="${docId}">Edit</button>
+      <button type="button" class="btn outline deleteStudentBtn" data-id="${docId}" data-name="${escapeHtml(data.name)}">Delete</button>
+    </td>
+  `;
+  return tr;
+}
+
+// Same row, but Name and School ID become editable input fields,
+// and the action buttons become Save / Cancel.
+function renderStudentEditRow(docId, data, index){
+  const tr = document.createElement("tr");
+  tr.dataset.id = docId;
+  tr.innerHTML = `
+    <td>${index}</td>
+    <td><input type="text" class="editNameInput" value="${escapeHtml(data.name)}"></td>
+    <td><input type="text" class="editSchoolIdInput" value="${escapeHtml(data.schoolId)}"></td>
+    <td>${escapeHtml(data.course || "—")}</td>
+    <td>${escapeHtml(data.yearLevel || "—")}</td>
+    <td>
+      <button type="button" class="btn gold saveStudentBtn" data-id="${docId}">Save</button>
+      <button type="button" class="btn outline cancelStudentBtn" data-id="${docId}">Cancel</button>
+    </td>
   `;
   return tr;
 }
@@ -232,38 +285,122 @@ async function loadStudents(){
   });
 
   // reset back to the first page whenever the roster is (re)loaded,
-  // e.g. right after adding or deleting a student
+  // e.g. right after adding, editing, or deleting a student
   visibleCount = PAGE_SIZE;
   renderVisibleStudents();
 }
 
-// ---- Deleting a student (delete from the database) ----
+// ---- Table actions: Edit, Save, Cancel, Delete (event delegation) ----
 studentsBody.addEventListener("click", async (e) => {
-  const btn = e.target.closest(".deleteStudentBtn");
-  if(!btn) return;
+  const deleteBtn = e.target.closest(".deleteStudentBtn");
+  const editBtn = e.target.closest(".editStudentBtn");
+  const saveBtn = e.target.closest(".saveStudentBtn");
+  const cancelBtn = e.target.closest(".cancelStudentBtn");
 
-  const studentId = btn.dataset.id;
-  const studentName = btn.dataset.name;
+  // ---- Delete ----
+  if(deleteBtn){
+    const studentId = deleteBtn.dataset.id;
+    const studentName = deleteBtn.dataset.name;
 
-  const confirmed = window.confirm(
-    `Are you sure you want to delete ${studentName}? This cannot be undone, and they will be permanently removed from the database.`
-  );
-  if(!confirmed) return;
+    const confirmed = window.confirm(
+      `Are you sure you want to delete ${studentName}? This cannot be undone, and they will be permanently removed from the database.`
+    );
+    if(!confirmed) return;
 
-  btn.disabled = true;
-  btn.textContent = "...";
+    deleteBtn.disabled = true;
+    deleteBtn.textContent = "...";
 
-  try{
-    await deleteDoc(doc(db, "students", studentId));
-    addMsg.textContent = `${studentName} has been deleted.`;
-    addMsg.className = "msg ok show";
-    loadStudents();
-  }catch(err){
-    console.error(err);
-    addMsg.textContent = `There was a problem deleting ${studentName}.`;
-    addMsg.className = "msg error show";
-    btn.disabled = false;
-    btn.textContent = "Delete";
+    try{
+      await deleteDoc(doc(db, "students", studentId));
+      addMsg.textContent = `${studentName} has been deleted.`;
+      addMsg.className = "msg ok show";
+      loadStudents();
+    }catch(err){
+      console.error(err);
+      addMsg.textContent = `There was a problem deleting ${studentName}.`;
+      addMsg.className = "msg error show";
+      deleteBtn.disabled = false;
+      deleteBtn.textContent = "Delete";
+    }
+    return;
+  }
+
+  // ---- Enter edit mode ----
+  if(editBtn){
+    const studentId = editBtn.dataset.id;
+    const student = allStudents.find(s => s.id === studentId);
+    if(!student) return;
+
+    const tr = editBtn.closest("tr");
+    const index = tr.children[0].textContent;
+    const editTr = renderStudentEditRow(studentId, student.data, index);
+    tr.replaceWith(editTr);
+    editTr.querySelector(".editNameInput").focus();
+    return;
+  }
+
+  // ---- Cancel edit mode (revert back, no changes saved) ----
+  if(cancelBtn){
+    const studentId = cancelBtn.dataset.id;
+    const student = allStudents.find(s => s.id === studentId);
+    if(!student) return;
+
+    const tr = cancelBtn.closest("tr");
+    const index = tr.children[0].textContent;
+    const normalTr = renderStudentRow(studentId, student.data, index);
+    tr.replaceWith(normalTr);
+    return;
+  }
+
+  // ---- Save the edited Name / School ID ----
+  if(saveBtn){
+    const studentId = saveBtn.dataset.id;
+    const tr = saveBtn.closest("tr");
+    const nameInput = tr.querySelector(".editNameInput");
+    const schoolIdInput = tr.querySelector(".editSchoolIdInput");
+    const newName = nameInput.value.trim();
+    const newSchoolId = schoolIdInput.value.trim();
+
+    if(!newName || !newSchoolId){
+      alert("Name and School ID cannot be empty.");
+      return;
+    }
+
+    const student = allStudents.find(s => s.id === studentId);
+    if(!student) return;
+
+    saveBtn.disabled = true;
+    const cancelBtnEl = tr.querySelector(".cancelStudentBtn");
+    if(cancelBtnEl) cancelBtnEl.disabled = true;
+    saveBtn.innerHTML = '<span class="spinner"></span>';
+
+    try{
+      // Only check for a duplicate name if the name actually changed,
+      // so re-saving with the same name doesn't falsely block itself.
+      if(newName !== student.data.name && await nameExists(newName)){
+        alert(`A student is already registered with the name "${newName}". Please use a different name.`);
+        saveBtn.disabled = false;
+        saveBtn.textContent = "Save";
+        if(cancelBtnEl) cancelBtnEl.disabled = false;
+        return;
+      }
+
+      await updateDoc(doc(db, "students", studentId), {
+        name: newName,
+        schoolId: newSchoolId
+      });
+
+      addMsg.textContent = `${newName} has been updated.`;
+      addMsg.className = "msg ok show";
+      loadStudents();
+    }catch(err){
+      console.error(err);
+      alert("There was a problem updating the student. Please try again.");
+      saveBtn.disabled = false;
+      saveBtn.textContent = "Save";
+      if(cancelBtnEl) cancelBtnEl.disabled = false;
+    }
+    return;
   }
 });
 

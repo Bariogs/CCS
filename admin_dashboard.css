@@ -962,3 +962,25 @@ input, select{ font-size: 16px; }
     height: 40px;
   }
 }
+
+
+
+
+
+  /* ===== Inline edit fields for the students table ===== */
+  .editNameInput, .editSchoolIdInput{
+    width: 100%;
+    min-width: 120px;
+    padding: 6px 8px;
+    border: 1px solid #d8d2c0;
+    border-radius: 6px;
+    font-family: inherit;
+    font-size: 13px;
+    box-sizing: border-box;
+  }
+  .records td .btn{
+    margin-right: 6px;
+  }
+  .records td .btn:last-child{
+    margin-right: 0;
+  }
