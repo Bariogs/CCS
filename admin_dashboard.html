@@ -116,7 +116,12 @@
       <button type="submit" class="btn gold" id="addBtn">Add</button>
     </form>
 
-    <div class="table-scroll" id="studentsTableWrap" style="display:none; margin-top:26px;">
+    <div class="field" id="studentSearchWrap" style="display:none; max-width:320px; margin-top:26px; margin-bottom:0;">
+      <label for="studentSearch">Search by Name</label>
+      <input type="text" id="studentSearch" placeholder="Type a name to search...">
+    </div>
+
+    <div class="table-scroll" id="studentsTableWrap" style="display:none; margin-top:14px;">
       <table class="records" id="studentsTable">
         <thead><tr><th>#</th><th>Name</th><th>School ID</th><th>Course</th><th>Year Level</th><th>Action</th></tr></thead>
         <tbody id="studentsBody"></tbody>
@@ -124,6 +129,7 @@
     </div>
     <div id="studentsCountInfo" class="page-sub" style="display:none; margin-top:10px; margin-bottom:0;"></div>
     <button type="button" class="btn outline" id="seeMoreBtn" style="display:none; margin-top:14px;">See more</button>
+    <div id="noSearchResults" class="empty" style="display:none;">No students match your search.</div>
     <div id="emptyState" class="empty" style="display:none;">No students registered yet.</div>
   </div>
 
@@ -192,6 +198,9 @@ const studentsBody = document.getElementById("studentsBody");
 const studentsCountInfo = document.getElementById("studentsCountInfo");
 const seeMoreBtn = document.getElementById("seeMoreBtn");
 const emptyState = document.getElementById("emptyState");
+const studentSearchWrap = document.getElementById("studentSearchWrap");
+const studentSearchInput = document.getElementById("studentSearch");
+const noSearchResults = document.getElementById("noSearchResults");
 
 // ---- Pagination state for the student roster ----
 // We keep every student in memory (allStudents) and only render
@@ -200,6 +209,15 @@ const emptyState = document.getElementById("emptyState");
 const PAGE_SIZE = 10;
 let allStudents = [];
 let visibleCount = PAGE_SIZE;
+let searchTerm = "";
+
+// Returns allStudents filtered by the current search term (case-insensitive,
+// matches anywhere in the name). Returns everyone if the search box is empty.
+function getFilteredStudents(){
+  if(!searchTerm) return allStudents;
+  const term = searchTerm.toLowerCase();
+  return allStudents.filter(s => (s.data.name || "").toLowerCase().includes(term));
+}
 
 function renderStudentRow(docId, data, index){
   const tr = document.createElement("tr");
@@ -238,17 +256,32 @@ function renderStudentEditRow(docId, data, index){
 }
 
 function renderVisibleStudents(){
+  const filtered = getFilteredStudents();
   studentsBody.innerHTML = "";
-  const slice = allStudents.slice(0, visibleCount);
+  const slice = filtered.slice(0, visibleCount);
   slice.forEach((s, idx) => {
     studentsBody.appendChild(renderStudentRow(s.id, s.data, idx + 1));
   });
 
-  const total = allStudents.length;
+  const total = filtered.length;
   const shown = slice.length;
 
-  if(total > PAGE_SIZE){
-    studentsCountInfo.textContent = `Showing ${shown} of ${total} student(s).`;
+  // "No matching students" only applies while searching; if there's no
+  // search term at all, the normal emptyState already covers zero students.
+  if(searchTerm && total === 0){
+    noSearchResults.style.display = "block";
+    studentsTableWrap.style.display = "none";
+    studentsCountInfo.style.display = "none";
+    seeMoreBtn.style.display = "none";
+    return;
+  }
+  noSearchResults.style.display = "none";
+  studentsTableWrap.style.display = "block";
+
+  if(total > PAGE_SIZE || (searchTerm && allStudents.length > total)){
+    studentsCountInfo.textContent = searchTerm
+      ? `Showing ${shown} of ${total} matching student(s).`
+      : `Showing ${shown} of ${total} student(s).`;
     studentsCountInfo.style.display = "block";
   } else {
     studentsCountInfo.style.display = "none";
@@ -270,6 +303,8 @@ async function loadStudents(){
   if(snap.empty){
     allStudents = [];
     emptyState.style.display = "block";
+    studentSearchWrap.style.display = "none";
+    noSearchResults.style.display = "none";
     studentsTableWrap.style.display = "none";
     studentsCountInfo.style.display = "none";
     seeMoreBtn.style.display = "none";
@@ -277,6 +312,7 @@ async function loadStudents(){
   }
 
   emptyState.style.display = "none";
+  studentSearchWrap.style.display = "block";
   studentsTableWrap.style.display = "block";
 
   allStudents = [];
@@ -289,6 +325,13 @@ async function loadStudents(){
   visibleCount = PAGE_SIZE;
   renderVisibleStudents();
 }
+
+// ---- Search-by-name filter ----
+studentSearchInput.addEventListener("input", () => {
+  searchTerm = studentSearchInput.value.trim();
+  visibleCount = PAGE_SIZE; // start back at the first page for every new search
+  renderVisibleStudents();
+});
 
 // ---- Table actions: Edit, Save, Cancel, Delete (event delegation) ----
 studentsBody.addEventListener("click", async (e) => {
