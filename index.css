@@ -80,9 +80,9 @@ a:focus-visible, button:focus-visible{
    =========================================================== */
 header{
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: space-between;
-  gap: 20px;
+  gap: 12px;
   text-align: center;
   padding: 44px 20px 28px;
   padding-top: max(44px, env(safe-area-inset-top));
@@ -91,6 +91,14 @@ header{
   color: var(--paper);
   background: var(--navy-deep);
   border-bottom: 3px solid var(--gold);
+}
+
+header .header-top{
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
 }
 
 header .header-text{
@@ -106,22 +114,24 @@ header .logo{
 }
 
 header h1{
-  margin: 0 0 6px;
+  margin: 0;
   font-family: var(--font-display);
-  font-weight: 700;
-  font-size: clamp(1.1rem, 5vw, 1.65rem);
-  letter-spacing: -.01em;
-  line-height: 1.25;
+  font-weight: 800;
+  font-size: clamp(1.15rem, 5.2vw, 1.75rem);
+  letter-spacing: -.005em;
+  line-height: 1.3;
   word-wrap: break-word;
 }
 
-/* highlighted school-name badge, sits between the two logos */
+/* highlighted school-name badge — its own full-width line beneath
+   the logo row, styled to read clearly at a glance */
 header h1.school-highlight{
   display: inline-block;
   color: var(--navy-deep);
   background: var(--gold-pale);
-  padding: 4px 14px;
+  padding: 8px 22px;
   border-radius: var(--radius-sm);
+  box-shadow: 0 2px 0 rgba(14,26,51,.12);
 }
 
 header h2{
@@ -342,7 +352,7 @@ footer{
    logos glued to the outer edges instead of drifting inward.
    =========================================================== */
 @media (max-width: 600px){
-  header{
+  header .header-top{
     justify-content: space-between;
     gap: 10px;
   }
@@ -379,6 +389,7 @@ footer{
 @media (max-width: 360px){
   header{ padding: 14px 10px; gap: 8px; }
   header h1{ font-size: .95rem; }
+  header h1.school-highlight{ padding: 6px 16px; }
   header h2{ font-size: .7rem; }
   header .logo{ width: 38px; height: 38px; }
   main > p{ font-size: .9rem; }
@@ -392,9 +403,10 @@ footer{
    main content stay reachable without scrolling awkwardly
    =========================================================== */
 @media (max-height: 420px) and (orientation: landscape){
-  header{ padding: 14px 20px; }
+  header{ padding: 14px 20px; gap: 6px; }
   header .logo{ width: 36px; height: 36px; }
-  header h1{ font-size: 1rem; margin-bottom: 2px; }
+  header h1{ font-size: 1rem; }
+  header h1.school-highlight{ padding: 4px 14px; }
   header h2{ font-size: .72rem; }
   main{ padding: 14px 18px; }
   #countdownPopup{ padding: 14px 16px 16px; margin-bottom: 12px; }
