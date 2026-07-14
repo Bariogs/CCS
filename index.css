@@ -123,15 +123,14 @@ header h1{
   word-wrap: break-word;
 }
 
-/* highlighted school-name badge — its own full-width line beneath
-   the logo row, styled to read clearly at a glance */
+/* highlighted school-name — no background box, the "highlight" is
+   done purely through color, weight, and letter-spacing so it reads
+   clearly against the navy header */
 header h1.school-highlight{
-  display: inline-block;
-  color: var(--navy-deep);
-  background: var(--gold-pale);
-  padding: 8px 22px;
-  border-radius: var(--radius-sm);
-  box-shadow: 0 2px 0 rgba(14,26,51,.12);
+  color: var(--gold-pale);
+  font-weight: 800;
+  letter-spacing: .015em;
+  text-shadow: 0 1px 3px rgba(0,0,0,.35);
 }
 
 header h2{
@@ -389,7 +388,6 @@ footer{
 @media (max-width: 360px){
   header{ padding: 14px 10px; gap: 8px; }
   header h1{ font-size: .95rem; }
-  header h1.school-highlight{ padding: 6px 16px; }
   header h2{ font-size: .7rem; }
   header .logo{ width: 38px; height: 38px; }
   main > p{ font-size: .9rem; }
@@ -406,7 +404,6 @@ footer{
   header{ padding: 14px 20px; gap: 6px; }
   header .logo{ width: 36px; height: 36px; }
   header h1{ font-size: 1rem; }
-  header h1.school-highlight{ padding: 4px 14px; }
   header h2{ font-size: .72rem; }
   main{ padding: 14px 18px; }
   #countdownPopup{ padding: 14px 16px 16px; margin-bottom: 12px; }
